@@ -27,6 +27,7 @@
     "risk:demo": "tsx scripts/risk-demo.ts",
     "envio:demo": "tsx scripts/envio-demo.ts",
     "erc8004:demo": "tsx scripts/erc8004-demo.ts",
+    "nansen:demo": "tsx scripts/nansen-demo.ts",
     "intents:demo": "tsx scripts/intents-demo.ts",
     "report": "tsx scripts/report.ts"
   },

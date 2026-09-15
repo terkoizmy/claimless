@@ -16,3 +16,6 @@ export * from "./hash.js";
 export * from "./registry.js";
 export * from "./risk.js";
 export * from "./envio.js";
+export * from "./erc8004.js";
+export * from "./intents.js";
+export * from "./nansen.js";
