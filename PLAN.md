@@ -596,15 +596,18 @@ spawn_hook = "wt -w 0 sp -V"      # vertical split pane in Windows Terminal
 
 ### 11.3 Model for workers
 
-Worker model defaults to the coordinator's. **Use the same model** for consistency:
+Default worker model (decided 2026-09-15): **`ollama-cloud:glm-5.3-flash`** (route-pinned) with `effort="low"` for defined coding/verification tasks.
 
 ```
-model: "deepseek-v4-flash:0731-cloud"
+model: "ollama-cloud:glm-5.3-flash"
 ```
 
-⚠️ **Name note:** `deepseek-v4-flash:cloud` **does not exist**. The correct names are:
-- `deepseek-v4-flash:0731-cloud` (1M context, tools + thinking) — **use this for workers**
-- `deepseek-v4.1-flash:cloud` (763B) — coordinator model
+⚠️ **Name note:** the old names in earlier drafts were wrong.
+- `deepseek-v4-flash:cloud` — **does not exist**
+- `deepseek-v4-flash:0731-cloud` — **does not exist** (this was the previous "correct" name and it is also wrong)
+- Valid ids instead: `deepseek-v4-flash:0731` and `deepseek-v4.1-flash:cloud` (coordinator default)
+
+Run `swarm list_models` to confirm what is actually available before spawning.
 
 ### 11.4 Spawn pattern that works
 
@@ -614,7 +617,7 @@ model: "deepseek-v4-flash:0731-cloud"
 swarm(
   action="spawn",
   label="short-task-name",           # MANDATORY, shown in the UI
-  model="deepseek-v4-flash:0731-cloud",
+  model="ollama-cloud:glm-5.3-flash",
   spawn_mode="visible",               # MANDATORY for panes
   effort="low",                       # research: low | coding: low | review: default
   prompt="[detailed task, see §11.6]"
@@ -666,7 +669,7 @@ When done, report: files created, forge test result, commit hash.
 
 **Research prompt example:**
 ```
-Web research (webfetch concrete URLs; websearch is BLOCKED on this machine).
+Web research (websearch works on this machine; webfetch concrete URLs for primary sources).
 TOPIC: [topic]
 [list of concrete URLs to check]
 Report: [requested points]

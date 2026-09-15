@@ -14,10 +14,12 @@
 | Item | Status |
 |---|---|
 | Repo | `C:\Users\terkoiz\Documents\hackathon\claimless` |
-| Git | Initialized, one commit (`Initial commit`), only `README.md` tracked |
-| Branch | default |
+| Git | Initialized, pushed to `origin/main` (`github.com/terkoizmy/claimless`) |
+| Branch | `main` (push directly, no dev branch) |
 | Deadline | **Oct 14, 2026, 03:59 UTC** |
-| Bounty target | **$24,000** (Aurora Intents, Privy, Nansen, Mera ×2, CRE, Envio) |
+| Bounty target | **$26,500** (Aurora Intents $5k, Privy $5k, Nansen $5k, MetaMask Agent Wallet Plugin $2.5k, Mera ×2 $5k, CRE $3k, Envio $1k) |
+| Core components | `IncidentRegistry` · `RiskScore` · `AgentIdentity` (ERC-8004 adapter) · `CoverPool` · `ParametricTrigger` |
+| Docs | `PLAN.md`, `IDEA.md`, `docs/` (7 research docs incl. `ERC8004_COLDSTART_FINDINGS.md`, `INCENTIVE_MECHANISM_DESIGN.md`, `COLDSTART_DISTRIBUTION_STRATEGY.md`, `METAMASK_AGENT_WALLET_PLUGIN.md`) |
 
 ## 3. Environment status (verified 2026-09-15)
 
@@ -61,7 +63,7 @@ Toolchain choice: **Foundry for contracts** (Solidity tests + built-in fuzzing, 
 
 See `PLAN.md` §11 for the full guide. Summary:
 
-- Spawn mode is `visible` with a Windows Terminal vertical split (already configured in `~/.jcode/config.toml`).
-- Worker model: `deepseek-v4-flash:0731-cloud` (note: `deepseek-v4-flash:cloud` does **not** exist).
+- Spawn mode is `visible` with a Windows Terminal vertical split (already configured in `~/.jcode/config.toml`). **Always pass `spawn_mode="visible"` per call** — the per-call parameter overrides the config.
+- Worker model: `ollama-cloud:glm-5.3-flash` (route-pinned). Note `deepseek-v4-flash:0731-cloud` does **not** exist; the valid deepseek ids are `deepseek-v4-flash:0731` and `deepseek-v4.1-flash:cloud`.
 - Always pass `label` when spawning.
-- Use swarm for parallel research/verification, not for sequential coding.
+- Use swarm for parallel research/verification and independent files, not for sequential coding on one file.
