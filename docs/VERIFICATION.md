@@ -3,6 +3,47 @@
 > Chronological record of what has been verified, on-chain or live. Every row has a
 > transaction, a command output, or a screenshot behind it. Newest first.
 
+## 2026-09-16 — Week 2: SDK, autonomous agent, sponsor adapters
+
+**Result:** `cd sdk && pnpm verify` → **5 passed, 0 failed**.
+
+| Check | Evidence |
+|---|---|
+| Score from the contract | `87` (`acceptedCount=1`, `severitySum=4`) |
+| Score from the Envio indexer | `87` (independent process, GraphQL) |
+| Both paths agree | PASS |
+| `getAcceptedCount` matches the score input | PASS |
+| `CHALLENGE_WINDOW` = 3 days | PASS (`259200s`) |
+| ERC-8004 reputation round trip | `count=1`, `value=-87000000000000000000`, `decimals=18`, `tag1=claimless:incident` |
+| Aurora Intents live dry quote | `amountOut=498070`, `37s`, no API key, no funds |
+
+**Autonomous report, live:** `agents/reporter.ts` reported a real incident with no
+human interaction.
+
+| Step | Value |
+|---|---|
+| tx | `0x3d191d29c7e962728e5d212b8d45c8473804d32446b942dc77c46f1833d49938` |
+| block | `62843734` (status success) |
+| incident | id `1`, kind `WRONG_OUTPUT`, severity `3`, status `PENDING` |
+| indexer | picked it up in realtime: `incidentCount: 2` in GraphQL |
+
+**CRE workflow encoding verified against the live chain:** `cast sig` gives
+`0x0e1af57b` for `getScore(uint256)` and `0xa437d4f7` for `getAcceptedCount(uint256)`;
+raw `eth_call` with that calldata returns `87` and `1` respectively. So the
+workflow's hand-rolled ABI encoding is correct against real state.
+
+Details, including seven bugs found and fixed, are in `WEEK2_NOTES.md`.
+
+## 2026-09-16 — Contracts source-verified on MonadVision
+
+All three contracts return `exact_match` from Sourcify.
+
+| Contract | Address | Match |
+|---|---|---|
+| `IncidentRegistry` | `0xF856AC417597eb1aD952CEeb963FD51B1D2789cF` | exact (matchId 1854978) |
+| `RiskScore` | `0xF61B247543D0719c74D222057E3dd49F863f87f9` | exact (matchId 1854979) |
+| `AgentIdentity` | `0x7eFC535445E323fC50BF652D3fc42332057Ae703` | exact (matchId 1854980) |
+
 ## 2026-09-16 — Envio indexer running live
 
 **Result:** the self-hosted Envio stack indexes real Monad testnet events and serves

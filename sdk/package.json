@@ -29,6 +29,7 @@
     "erc8004:demo": "tsx scripts/erc8004-demo.ts",
     "nansen:demo": "tsx scripts/nansen-demo.ts",
     "mera:demo": "tsx scripts/mera-demo.ts",
+    "verify": "tsx scripts/verify.ts",
     "intents:demo": "tsx scripts/intents-demo.ts",
     "report": "tsx scripts/report.ts"
   },
