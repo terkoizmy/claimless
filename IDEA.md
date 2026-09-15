@@ -184,11 +184,13 @@ We measured the one place the problem was already attempted at scale. ERC-8004 (
 | Cause of silence | Fixed by | Status |
 |---|---|---|
 | Reporting needs **custom integration** | **MCP server on npm + Official MCP Registry, plus a MetaMask Agent Wallet plugin** | ✅ Buildable now, $0 |
-| Reporting is **optional** | **Disclosure as a condition of coverage** — no risk record means no coverage | ✅ Design, $0, proven pattern |
+| Reporting is **optional** | **Disclosure is priced into coverage** — no record means worst-tier premium and a 10% cap | ✅ Design, $0, proven pattern |
 | Skipping is **unpunished** | Same mechanism: silence gets a worse price, not a fine | ✅ Design, $0 |
 
 **The mechanism, in one line:**
-> "We don't pay people to confess and we don't punish them for silence. We just price the silence. No record means no coverage."
+> "We don't pay people to confess and we don't punish them for silence. We just price the silence."
+
+**Decided policy (2026-09-15): never a hard rejection.** An agent with no record can still buy coverage, but at **5x premium** and **10% of the normal cap**. Reporting improves the terms. A disclosed *bad* record is still better than no record, which is exactly the incentive we want.
 
 **Why not a reward:** it invites fabrication and we cannot fund a pool. **Why not staking as the primary:** staking makes *lying* expensive but does nothing about *silence* — and silence is what we measured (827,827 agents, ~0 feedback).
 

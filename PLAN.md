@@ -237,16 +237,18 @@ function deposit() external payable;                    // underwriter deposits 
 function withdraw(uint256 amount) external;
 
 // PRIMARY INCENTIVE MECHANISM: disclosure is a condition of coverage.
-// No risk record => coverage refused or hard-capped.
+// DECIDED: never a hard rejection. No record => punitive premium + hard-capped small coverage.
 function buyCover(uint256 agentId, uint256 amount, uint256 duration) external payable;
 function quotePremium(uint256 agentId, uint256 amount, uint256 duration)
-    external view returns (uint256 premium, bool eligible);
+    external view returns (uint256 premium, uint256 maxCoverage, bool hasRecord);
 function getCapacity() external view returns (uint256);
+uint256 public constant NO_RECORD_PREMIUM_MULTIPLIER = 5;      // 5x the best tier
+uint256 public constant NO_RECORD_MAX_COVERAGE_BPS = 1000;     // 10% of normal cap
 event CoverPurchased(uint256 indexed agentId, address buyer, uint256 amount, uint256 premium);
-event CoverRefused(uint256 indexed agentId, address buyer, bytes32 reason);
+event CoverRefused(uint256 indexed agentId, address buyer, bytes32 reason); // only for invalid cases, NOT for missing data
 ```
 
-**This is the cold-start fix.** `buyCover` reverts (or caps coverage) when the agent has no risk record. Nobody is paid to confess and nobody is slashed for silence — silence simply **cannot buy coverage**, or buys it at a punitive premium. Proven pattern: Sherlock Shield prices coverage by disclosed findings (0 findings = $500k, 30+ = $1k).
+**This is the cold-start fix.** A new agent **can** buy coverage, but at 5x premium and 10% of the normal cap. Reporting an incident (or completing a coverage period) improves the terms. Silence is priced, not punished. Proven pattern: Sherlock Shield prices coverage by disclosed findings (0 findings = $500k, 30+ = $1k).
 
 ### ParametricTrigger.sol
 ```solidity

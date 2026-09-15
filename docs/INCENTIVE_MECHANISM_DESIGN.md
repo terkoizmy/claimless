@@ -122,13 +122,31 @@ Stage 1 is enough for a working demo and a defensible thesis. Stages 2-3 are gro
 
 ### 4.1 Layer 1 — pricing (primary)
 
-`CoverPool.buyCover(agentId, ...)` requires a **risk record** for `agentId`:
+`CoverPool.buyCover(agentId, ...)` requires a **risk record** for `agentId`. **DECIDED (2026-09-15): option 2 — never a hard rejection.**
 
-- No record → coverage refused, or a hard cap (e.g. minimum viable coverage only).
-- Record exists → price and capacity derived from `RiskScore`.
-- Better record → cheaper premium and larger capacity.
+| Agent state | Coverage allowed | Premium | Capacity |
+|---|---|---|---|
+| Has a risk record | ✅ Yes | Derived from `RiskScore` | Normal, scaled by score |
+| **No record at all** | ✅ **Yes, but minimal** | **Punitive** (worst tier) | **Hard-capped at a small floor** |
 
-**No new contract needed.** This is a modifier on a contract already in the plan.
+**Why this choice, not a hard block:**
+
+- **Cold start friendliness.** A hard rejection gives a new agent *no reason to ever come back*. Allowing small, expensive coverage creates a first purchase, which creates the record, which unlocks better terms. That is the conversion loop we want.
+- **It still prices the silence.** The premium is the punishment. An agent that stays silent pays the worst rate for the least protection. Silence is not free, it is just not fatal.
+- **It is defensible.** "We insured you, we just charged more because we had no data" is a normal insurance stance. "We refused you because you had no data" is how you lose a customer permanently.
+- **It avoids looking punitive in a demo.** Judges see a working purchase path even for a brand-new agent, with an obviously worse quote, and then see it improve after a report. That is a **visible before/after**, which is far more compelling on video than a revert.
+
+**Recommended constants for the prototype:**
+
+```
+NO_RECORD_PREMIUM_MULTIPLIER = 5x   // vs the best-tier premium
+NO_RECORD_MAX_COVERAGE       = small floor, e.g. 1/10th of normal cap
+MIN_RECORD_FOR_BETTER_TIER   = 1 finalized incident (or 1 successful coverage period)
+```
+
+**Mechanically:** `quotePremium` returns `eligible = true` always, but returns a high premium and a low cap when no record exists. `buyCover` enforces the cap rather than reverting. Emit `CoverRefused` only for genuinely invalid cases (unknown `agentId`, pool insolvent), not for missing data.
+
+**Note the asymmetry this creates:** the *worse* your disclosed record, the *cheaper* your coverage relative to staying silent. A disclosed bad record is better than no record. That is exactly the incentive we want.
 
 ### 4.2 Layer 2 — dispute bond (secondary)
 
