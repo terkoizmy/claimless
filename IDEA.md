@@ -95,8 +95,9 @@ An underwriter capital pool backs the risk. Payout is **triggered automatically*
 | **Chainlink CRE** | Trigger automation | ✅ Free build + simulate, Monad verified | CRE bounty ($3k) |
 | **Aurora Intents** | Any-chain deposits into the Monad pool | ✅ Free demo via `dry:true`; live swap needs ~$0.50 | Aurora Intents bounty ($5k) |
 | **ERC-8004** | Agent identity/reputation registries (CORE, already live on Monad) | ✅ Deployed on Monad **testnet AND mainnet**; free to use | Track 04 fit; we populate it |
+| **MetaMask Agent Wallet plugin** | Distribution: `mm claimless report/risk/agent` | ✅ **Monad testnet 10143 supported natively**; $0 | Agent Wallet Plugin bounty ($2.5k) + fixes cold start |
 
-**Total bounty target: $24,000** (excluding main track prizes)
+**Total bounty target: $26,500** (excluding main track prizes)
 
 > **ERC-8004 note:** the standard Track 04 names, and it is **already deployed on Monad testnet** (Identity `0x8004A818BFB912233c491871b3d84c89A494BD9e`, Reputation `0x8004B663056A597Dffe9eCcC1965A193B7388713`) and mainnet (`0x8004A169...` / `0x8004BAa1...`). **We do not fork it — we write into it.** It has **827,827 agents registered with essentially zero feedback** (1,821 of them on Monad testnet), which is verified evidence of the cold-start problem we solve. See `docs/ERC8004_COLDSTART_FINDINGS.md`.
 

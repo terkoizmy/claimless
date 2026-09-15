@@ -18,7 +18,7 @@
 
 **Differentiation:** Zero human adjudication. The lesson from InsurAce, Cover Protocol, and Nexus Mutual (which surrendered to a 3-expert committee).
 
-**Bounty target:** $24,000 (Aurora Intents $5k, Privy $5k, Nansen $5k, Mera ×2 $5k, CRE $3k, Envio $1k). Track 04.
+**Bounty target:** $26,500 (Aurora Intents $5k, Privy $5k, Nansen $5k, MetaMask Agent Wallet Plugin $2.5k, Mera ×2 $5k, CRE $3k, Envio $1k). Track 04.
 
 **Working principles:**
 1. **Commit every day** — a single commit on the final day means automatic disqualification
@@ -82,6 +82,16 @@ claimless/
 │
 ├── agents/                        # autonomous agent demos
 │   ├── reporter.ts                # agent that reports incidents
+│   └── README.md
+│
+├── mm-plugin/                     # MetaMask Agent Wallet plugin ($2,500 bounty)
+│   ├── package.json               # oclif-plugin keyword + "mm" manifest block
+│   ├── src/
+│   │   ├── commands/
+│   │   │   ├── claimless/report.ts    # claimless:report (wallet-submit)
+│   │   │   ├── claimless/risk.ts      # claimless:risk   (wallet-read)
+│   │   │   └── claimless/agent.ts     # claimless:agent  (wallet-read, ERC-8004)
+│   │   └── index.ts
 │   └── README.md
 │
 ├── web/                           # Next.js dashboard
@@ -149,6 +159,7 @@ claimless/
 | 18 | Dashboard: agent detail + coverage | 2 pages | Navigation works |
 | 18b | Wire Aurora Intents quote into "Deposit from any chain" UI | Deposit panel | Any-chain deposit visible |
 | 19 | End-to-end demo v1 | Full scenario | 8 steps work |
+| 19b | MetaMask Agent Wallet plugin (`mm claimless report/risk/agent`) | Published npm package | `mm plugins install` works on Monad testnet |
 | 20 | Demo polish + bug fixes | Stable demo | Repeatable |
 | 21 | Record 2-3 minute video | `docs/demo-script.md` + video | Video done |
 
@@ -287,9 +298,16 @@ function getAgentRisk(uint256 agentId) external view returns (int128 score, uint
 | **Mera: One Passkey, Many Keys** | $2,500 | Many accounts derived from one passkey |
 | **Best workflow with CRE** | $3,000 | CRE as the trigger orchestration layer |
 | **Best Use of Envio** | $1,000 | Indexer drives a core feature |
-| **Best Agent Wallet Plugin** ⚠️ *newly found, unverified fit* | $2,500 | Agent wallet plugin; check whether our Privy agent-wallet layer qualifies |
-| **Total (confirmed)** | **$24,000** | |
-| **Total (with agent-wallet plugin)** | **$26,500** | |
+| **Best Agent Wallet Plugin** — *sponsor: MetaMask* | $2,500 | Published `mm` plugin; Monad testnet 10143 is natively supported |
+| **Total** | **$26,500** | |
+
+> **Agent Wallet Plugin — verified facts** (details in `docs/METAMASK_AGENT_WALLET_PLUGIN.md`):
+> - Sponsor is **MetaMask**; deliverable is an **npm package** adding `mm` commands.
+> - **Monad testnet (10143) and mainnet (143) are both preconfigured** in Agent Wallet. No workaround needed.
+> - Capabilities we use: `wallet-read` + `wallet-submit`. `mnemonic-read`/`config-write` are reserved and rejected.
+> - Plugins are **beta and off by default**: judges need `mm config set experimentalPlugins true`.
+> - Cost: **$0**. Template + SDK are free; `@metamask/agent-wallet` latest is 6.2.1.
+> - **This also mitigates our cold start:** if `mm claimless report` is one command away, reporting stops requiring custom integration.
 
 > **Track 04 target:** "Trust, Identity & AI Infrastructure" — $30,000 split across 3 teams. It explicitly lists **"Agent identity and reputation under ERC-8004"**. We now write into ERC-8004's live Monad registries rather than compete with them.
 
