@@ -19,3 +19,10 @@ export * from "./envio.js";
 export * from "./erc8004.js";
 export * from "./intents.js";
 export * from "./nansen.js";
+export * from "./signer.js";
+export * from "./privy.js";
+export * from "./mera.js";
+
+// Re-exported so consumers outside the sdk package (e.g. agents/) never need to
+// resolve viem themselves; they import everything from the SDK surface.
+export { formatEther, parseEther } from "viem";

@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@scure/bip32':
+        specifier: ^1.7.0
+        version: 1.7.0
+      '@scure/bip39':
+        specifier: ^1.6.0
+        version: 1.6.0
       viem:
         specifier: ^2.21.0
         version: 2.56.5(typescript@5.9.3)

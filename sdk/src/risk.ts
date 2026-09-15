@@ -337,7 +337,7 @@ export async function getScore(
     );
   }
 
-  const fromIndexer: RiskScore & { fromCache?: boolean } = {
+  const fromIndexer: RiskScore = {
     agentId,
     score,
     acceptedCount: fromReader.acceptedCount,

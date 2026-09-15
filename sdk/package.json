@@ -28,10 +28,13 @@
     "envio:demo": "tsx scripts/envio-demo.ts",
     "erc8004:demo": "tsx scripts/erc8004-demo.ts",
     "nansen:demo": "tsx scripts/nansen-demo.ts",
+    "mera:demo": "tsx scripts/mera-demo.ts",
     "intents:demo": "tsx scripts/intents-demo.ts",
     "report": "tsx scripts/report.ts"
   },
   "dependencies": {
+    "@scure/bip32": "^1.7.0",
+    "@scure/bip39": "^1.6.0",
     "viem": "^2.21.0"
   },
   "devDependencies": {
