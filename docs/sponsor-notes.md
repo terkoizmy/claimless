@@ -271,10 +271,10 @@ Human does these top to bottom. Each item names the env vars it fills in `.env.e
 - [ ] **1. Privy** — sign up at https://dashboard.privy.io, create app, enable agent wallets. **First check: does it demand a credit card?** (Week-1 gate.) Produces `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_PRIVATE_KEY`.
 - [x] **2. Envio** — DONE 2026-09-16. Token obtained, self-hosted Docker stack indexing live Monad events, GraphQL verified. See `indexer/README.md`.
 - [ ] **3. Nansen** — account + API key via https://nansen.ai/query. Produces `NANSEN_API_KEY`. Do **not** burn credits on `profiler/address/labels` (100 credits).
-- [ ] **4. Chainlink CRE** — account at https://app.chain.link/cre/discover, install CLI **v1.30.0+**, `cre account` login. Deploy approval (`cre account access`) can wait — simulate is free.
+- [x] **4. Chainlink CRE** — DONE 2026-09-16: CLI **v1.34.0 INSTALLED**, project scaffolded in `cre/`, hand-rolled ABI encoding verified live against the contracts. Remaining: `cre login` (needs an account) before the first `cre workflow simulate`.
 - [ ] **5. Mera** — no account. Test a passkey at https://mera.category.xyz/demo on **desktop Chrome with the passkey saved in Google Password Manager**. Gate: PRF must return (else `PRF_UNAVAILABLE`).
-- [ ] **6. Aurora Intents (optional)** — register at https://studio.aurora.dev for `AURORA_INTENTS_APP_KEY`. Dry quotes need no key; defer until `sdk/src/intents.ts` exists.
-- [ ] **7. MetaMask plugin** — no signup. Create the npm account only before publish (Week 3).
+- [x] **6. Aurora Intents (optional)** — DONE 2026-09-16: `sdk/src/intents.ts` written and verified with a live `dry:true` quote (no key, no funds). Registration at https://studio.aurora.dev is only needed for the optional live proof.
+- [ ] **7. MetaMask plugin** — no signup. Code written in `mm-plugin/` (Week 3); create the npm account only before publish.
 - [ ] **8. ERC-8004** — no signup. Before writing the adapter, re-verify the two testnet addresses return code via `MONAD_RPC_URL`.
 
 ---
