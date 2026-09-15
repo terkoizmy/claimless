@@ -55,13 +55,31 @@
  */
 
 import type { Address, Hash, Hex, TypedDataDefinition } from "viem";
-import { sha256 as viemSha256, toHex } from "viem";
+import { sha256 as viemSha256 } from "viem";
+import { createRequire } from "node:module";
 import {
   mnemonicToAccount,
   signMessage as viemSignMessage,
   signTypedData as viemSignTypedData,
   type LocalAccount,
 } from "viem/accounts";
+
+/** Node-only require, created lazily; never evaluated in browsers. */
+const nodeRequire: ((id: string) => unknown) | undefined = (() => {
+  try {
+    if (
+      typeof process !== "undefined" &&
+      typeof process.versions?.node === "string" &&
+      // import.meta.url exists in ESM; guard for CJS transpiles too.
+      typeof import.meta.url === "string"
+    ) {
+      return createRequire(import.meta.url) as unknown as (id: string) => unknown;
+    }
+  } catch {
+    // Not Node (browser bundle) — fall through to undefined.
+  }
+  return undefined;
+})();
 
 /* ─────────────────────────────── constants ─────────────────────────────── */
 
@@ -447,18 +465,27 @@ function hexToBytes(hex: `0x${string}`): Uint8Array {
 
 /**
  * Standard BIP-39 seed: PBKDF2-HMAC-SHA512(mnemonic, "mnemonic", 2048, 64).
- * Synchronous via node:crypto under Node; browsers must await the async
- * variant (bip39SeedFromMnemonicAsync) — the browser ceremonies do.
+ * Synchronous via node:crypto under Node (used by deriveManyKeys and the
+ * demo); browsers take the async Web Crypto variant (bip39SeedFromMnemonic
+ * Async) inside the ceremonies.
  */
 function bip39SeedFromMnemonicSync(mnemonic: string): Uint8Array {
-  const { pbkdf2Sync } = require("node:crypto") as typeof import("node:crypto");
+  const { pbkdf2Sync } = nodeRequire("node:crypto") as {
+    pbkdf2Sync(
+      password: string,
+      salt: string,
+      iterations: number,
+      keylen: number,
+      digest: string,
+    ): Buffer;
+  };
   return new Uint8Array(
     pbkdf2Sync(mnemonic.normalize("NFKD"), "mnemonic", 2048, 64, "sha512"),
   );
 }
 
 /** Browser-path BIP-39 seed via Web Crypto. Used by the async ceremonies. */
-async function bip39SeedFromMnemonicAsync(mnemonic: string): Promise<Uint8Array> {
+async function bip39SeedFromMnemonic(mnemonic: string): Promise<Uint8Array> {
   const rt = runtime();
   if (!rt.crypto?.subtle) {
     throw new MeraError("DERIVATION_FAILED", "crypto.subtle is unavailable in this runtime");
