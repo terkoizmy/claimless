@@ -94,8 +94,13 @@ An underwriter capital pool backs the risk. Payout is **triggered automatically*
 | **Nansen** | Smart-money data for scoring | ✅ Free 100 credits | Nansen bounty ($5k) |
 | **Chainlink CRE** | Trigger automation | ✅ Free build + simulate, Monad verified | CRE bounty ($3k) |
 | **Aurora Intents** | Any-chain deposits into the Monad pool | ✅ Free demo via `dry:true`; live swap needs ~$0.50 | Aurora Intents bounty ($5k) |
+| **ERC-8004** | Agent identity/reputation registries (already live on Monad) | ✅ Deployed on Monad **mainnet**; free to read; no testnet deployment | Track 04 fit; complements our registry |
 
 **Total bounty target: $24,000** (excluding main track prizes)
+
+> **ERC-8004 note:** the standard Track 04 names, and it is **already live on Monad mainnet**: Identity `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, Reputation `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`. It has **827,827 registered agents and essentially zero feedback** — verified evidence of the cold-start problem we solve. We **write into** it rather than compete. See `docs/ERC8004_COLDSTART_FINDINGS.md`.
+
+> **x402 on Monad** is live and the **facilitator pays gas** (`https://x402-facilitator.molandak.org`, supports mainnet 143 and testnet 10143). This makes a paid-disclosure mechanism viable with the payer spending **zero gas on testnet** — a direct answer to the cold-start incentive problem.
 
 > **Aurora Intents caveat:** it has **no testnet** ("no testnet deployment and no plans for one"), but this does **not** block a full testnet demo. Monad testnet (10143) + Circle testnet USDC (`0x534b2f3A21130d7a60830c2Df862319e593943A3`) cover the entire app; only the Aurora hop uses a `dry: true` quote. A real swap needs cents on Base, not dollars.
 
@@ -149,12 +154,29 @@ Premium of 2–5% of coverage value (Nexus: 2.5–6.5% p.a.). **Requires a capit
 
 | Risk | Level | Mitigation |
 |---|---|---|
-| **Cold start** (who reports?) | 🔴 High | Reliability badge (reporting becomes a marketing tool) + anti-spam stake. **Unproven.** |
+| **Cold start** (who reports?) | 🔴 High | Reliability badge (reporting becomes a marketing tool) + anti-spam stake. **Unproven.** See the verified evidence below. |
 | **Small market** (DeFi insurance category is only $122M) | 🟠 Medium-high | Sell **data**, not insurance. The risk-data market is far larger |
 | **Basis risk** (trigger ≠ actual loss) | 🟠 Medium | **Narrow, deterministic** triggers: latency, HTTP status, completion rate |
 | **Regulation** (selling insurance without a license) | 🔴 High | **Never call it "insurance"**. Call it a "risk registry + coverage prototype" |
 | **False reports** | 🟠 Medium | Stake + staked verification + evidence hash. **No mass voting** |
 | **Large players enter** | 🟠 Medium | Work **with** them (sell data), not against them |
+
+### Cold start: now backed by hard evidence (VERIFIED 2026-09-15)
+
+We measured the one place the problem was already attempted at scale. ERC-8004 (the Monad-endorsed agent identity/reputation standard, and an explicit Track 04 target):
+
+| Metric | Value |
+|---|---|
+| Agents registered on ERC-8004 | **827,827** |
+| Agents on Monad specifically | **10,170** |
+| Feedback entries found | **77** in a 100-agent Monad sample (**0** in a global sample) |
+| Agents verified / starred | **0** |
+
+**Roughly 8,278 registrations per piece of feedback.** Identity shipped at scale; accountability did not. The only real feedback lives in three consecutive demo token IDs (#10180-10182).
+
+**Why:** feedback is free, optional, and unpunished. Nobody gains by reporting and the harmed party has already moved on.
+
+**What it means for us:** this is not a reason to abandon Claimless, it is the sharpest possible statement of the problem we solve. Our mechanism must put a **cost on silence and a reward on disclosure**. See `docs/ERC8004_COLDSTART_FINDINGS.md` for the full measurement, on-chain verification, and the correct integration path (write into ERC-8004's registries rather than compete with them).
 
 ---
 

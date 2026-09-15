@@ -238,7 +238,11 @@ event PayoutExecuted(uint256 indexed coverageId, uint256 amount);
 | **Mera: One Passkey, Many Keys** | $2,500 | Many accounts derived from one passkey |
 | **Best workflow with CRE** | $3,000 | CRE as the trigger orchestration layer |
 | **Best Use of Envio** | $1,000 | Indexer drives a core feature |
-| **Total** | **$24,000** | |
+| **Best Agent Wallet Plugin** ⚠️ *newly found, unverified fit* | $2,500 | Agent wallet plugin; check whether our Privy agent-wallet layer qualifies |
+| **Total (confirmed)** | **$24,000** | |
+| **Total (with agent-wallet plugin)** | **$26,500** | |
+
+> **Track 04 target:** "Trust, Identity & AI Infrastructure" — $30,000 split across 3 teams. It explicitly lists **"Agent identity and reputation under ERC-8004"**. We now write into ERC-8004's live Monad registries rather than compete with them.
 
 ### Aurora Intents integration (bounty-critical facts, VERIFIED 2026-09-15)
 
