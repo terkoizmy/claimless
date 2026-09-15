@@ -212,10 +212,17 @@ function reportIncident(
 function getIncidents(uint256 agentId) external view returns (Incident[] memory);
 function getIncidentCount(uint256 agentId) external view returns (uint256);
 
-// Anti-spam staking
-function challenge(uint256 incidentId) external;  // challenge a false report
+// Anti-spam staking (optimistic: silence of the accused = report stands)
+function challenge(uint256 incidentId) external payable;  // match the reporter's bond
+function resolveChallenge(uint256 incidentId, bool reportStands) external;  // loser forfeits bond
+function finalize(uint256 incidentId) external;           // after window, unopposed report is accepted
+uint256 public constant CHALLENGE_WINDOW = 3 days;
 event IncidentReported(uint256 indexed agentId, uint256 indexed incidentId, bytes32 kind, uint8 severity, address reporter);
+event IncidentChallenged(uint256 indexed incidentId, address challenger);
+event IncidentFinalized(uint256 indexed incidentId, bool accepted);
 ```
+
+**Incentive design (see `docs/INCENTIVE_MECHANISM_DESIGN.md`):** staking here is **only** for disputes — it makes *false* reports expensive. It does **not** make silence expensive. That job belongs to `CoverPool` below.
 
 ### RiskScore.sol
 ```solidity
@@ -228,10 +235,18 @@ event ScoreUpdated(uint256 indexed agentId, uint256 oldScore, uint256 newScore);
 ```solidity
 function deposit() external payable;                    // underwriter deposits capital
 function withdraw(uint256 amount) external;
+
+// PRIMARY INCENTIVE MECHANISM: disclosure is a condition of coverage.
+// No risk record => coverage refused or hard-capped.
 function buyCover(uint256 agentId, uint256 amount, uint256 duration) external payable;
+function quotePremium(uint256 agentId, uint256 amount, uint256 duration)
+    external view returns (uint256 premium, bool eligible);
 function getCapacity() external view returns (uint256);
 event CoverPurchased(uint256 indexed agentId, address buyer, uint256 amount, uint256 premium);
+event CoverRefused(uint256 indexed agentId, address buyer, bytes32 reason);
 ```
+
+**This is the cold-start fix.** `buyCover` reverts (or caps coverage) when the agent has no risk record. Nobody is paid to confess and nobody is slashed for silence — silence simply **cannot buy coverage**, or buys it at a punitive premium. Proven pattern: Sherlock Shield prices coverage by disclosed findings (0 findings = $500k, 30+ = $1k).
 
 ### ParametricTrigger.sol
 ```solidity

@@ -155,7 +155,7 @@ Premium of 2–5% of coverage value (Nexus: 2.5–6.5% p.a.). **Requires a capit
 
 | Risk | Level | Mitigation |
 |---|---|---|
-| **Cold start** (who reports?) | 🔴 High | **Two-part fix:** (1) *access* — MCP server + agent-wallet plugin make reporting one line away; (2) *incentive* — stake/slashing + paid disclosure. Part 1 is buildable now; part 2 is the open problem. See the verified evidence below. |
+| **Cold start** (who reports?) | 🔴 High | **Solved in design:** (1) *access* — MCP + agent-wallet plugin; (2) *incentive* — **disclosure is a condition of coverage** (no record → no coverage), not a reward. Staking only for disputes. See below. |
 | **Small market** (DeFi insurance category is only $122M) | 🟠 Medium-high | Sell **data**, not insurance. The risk-data market is far larger |
 | **Basis risk** (trigger ≠ actual loss) | 🟠 Medium | **Narrow, deterministic** triggers: latency, HTTP status, completion rate |
 | **Regulation** (selling insurance without a license) | 🔴 High | **Never call it "insurance"**. Call it a "risk registry + coverage prototype" |
@@ -179,17 +179,24 @@ We measured the one place the problem was already attempted at scale. ERC-8004 (
 
 **What it means for us:** this is not a reason to abandon Claimless, it is the sharpest possible statement of the problem we solve. See `docs/ERC8004_COLDSTART_FINDINGS.md` for the full measurement, on-chain verification, and the correct integration path (write into ERC-8004's registries rather than compete with them).
 
-### How we attack it: distribution + incentive (honest split)
+### How we attack it: pricing, not paying (the resolved answer)
 
 | Cause of silence | Fixed by | Status |
 |---|---|---|
 | Reporting needs **custom integration** | **MCP server on npm + Official MCP Registry, plus a MetaMask Agent Wallet plugin** | ✅ Buildable now, $0 |
-| Reporting is **optional** | Incentive design (stake, paid disclosure via x402) | ⚠️ **Open problem** |
-| Skipping is **unpunished** | Stake/slashing on `IncidentRegistry` | ⚠️ Design, unproven |
+| Reporting is **optional** | **Disclosure as a condition of coverage** — no risk record means no coverage | ✅ Design, $0, proven pattern |
+| Skipping is **unpunished** | Same mechanism: silence gets a worse price, not a fine | ✅ Design, $0 |
 
-**Say this plainly:** a plugin does not by itself fill the registry. It removes the *access* barrier, which is one of three. The remaining two need the staked incentive design in `IncidentRegistry.sol`. Full reasoning in `docs/COLDSTART_DISTRIBUTION_STRATEGY.md`.
+**The mechanism, in one line:**
+> "We don't pay people to confess and we don't punish them for silence. We just price the silence. No record means no coverage."
 
-**One important design consequence:** the three *read* MCP tools (`get_agent_identity`, `get_agent_risk`, `list_incidents`) make the product useful **before** anyone reports, by exposing ERC-8004 identity and risk lookups that already exist. That decouples early value from data volume.
+**Why not a reward:** it invites fabrication and we cannot fund a pool. **Why not staking as the primary:** staking makes *lying* expensive but does nothing about *silence* — and silence is what we measured (827,827 agents, ~0 feedback).
+
+**Proven by:** Sherlock Shield (current product) scales coverage from $500k down to $1k as disclosed findings rise. Traditional insurance has always treated disclosure as a condition, with non-disclosure causing denial or rescission. Neither pays for honesty; both price concealment.
+
+**Honest limitation:** this compels disclosure only from agents that *want coverage*. Stages 2-3 (condition of listing, portability via ERC-8004) extend it. Full analysis in `docs/INCENTIVE_MECHANISM_DESIGN.md`.
+
+**One important design consequence:** the three *read* MCP tools (`get_agent_identity`, `get_agent_risk`, `list_incidents`) make the product useful **before** anyone reports, by exposing ERC-8004 identity and risk lookups. That decouples early value from data volume.
 
 ---
 
