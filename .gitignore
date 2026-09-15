@@ -12,8 +12,7 @@ node_modules/
 out/
 cache/
 broadcast/
-lib/
-!lib/.gitkeep
+# NOTE: contracts/lib/ is tracked (git submodules for forge-std), do NOT ignore it.
 
 # Envio
 indexer/generated/
