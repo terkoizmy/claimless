@@ -13,3 +13,6 @@ export * from "./env.js";
 export * from "./types.js";
 export * from "./chain.js";
 export * from "./hash.js";
+export * from "./registry.js";
+export * from "./risk.js";
+export * from "./envio.js";
