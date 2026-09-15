@@ -26,13 +26,11 @@
 | git | 2.54.0.windows.1 | ✅ ready |
 | node | v24.16.0 | ✅ ready (Envio needs v22+) |
 | docker | 29.5.2 | ✅ ready |
-| **Foundry (`forge`)** | — | ❌ **NOT INSTALLED — install before Day 1 contract work** |
+| **Foundry** | **1.8.3** | ✅ **installed** at `%USERPROFILE%\.foundry\bin` (added to user PATH) |
 
-Install Foundry:
-```
-curl -L https://foundry.paradigm.xyz | bash
-foundryup
-```
+Foundry was installed from the official Windows release (`foundry_v1.8.3_win32_amd64.zip`, sha256 verified). `forge`, `cast`, `anvil`, `chisel` all work. A smoke test (`forge init` + `forge build`) compiled successfully.
+
+Toolchain choice: **Foundry for contracts** (Solidity tests + built-in fuzzing, needed for insurance invariants), Node/TypeScript for `sdk/` and `web/`. Both are officially documented by Monad (`docs.monad.xyz/tooling-and-infra/toolkits/foundry` and `.../hardhat`).
 
 ## 4. Non-negotiable rules
 
