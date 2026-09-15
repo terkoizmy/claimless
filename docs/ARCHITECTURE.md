@@ -65,7 +65,7 @@ Attachment points, in one line each:
 | Sponsor | Attaches at | Status |
 |---|---|---|
 | ERC-8004 | Layer 0: canonical registries written to via `AgentIdentity`, never forked | Built (adapter) / external (registries) |
-| Envio | Indexes `IncidentRegistry` and `RiskScore` events into Postgres + Hasura GraphQL for the dashboard and SDK | Scaffolded (Week 1): `indexer/config.yaml`, `schema.graphql`, `src/EventHandlers.ts`, `docker-compose.yaml`. Needs a deploy to index |
+| Envio | Indexes `IncidentRegistry` and `RiskScore` events into Postgres + Hasura GraphQL for the dashboard and SDK | **Working** (Week 1): self-hosted Docker stack indexes live Monad testnet events and serves them at `:8081/v1/graphql`. See `indexer/README.md` |
 | Nansen | Reporter-quality weighting applied at SDK read time on top of the on-chain score; the on-chain formula stays deterministic | Planned (Week 2, `sdk/src/nansen.ts`) |
 | Chainlink CRE | Calls `ParametricTrigger.evaluate` and executes payout; built with the free `cre workflow simulate` path | Planned (Weeks 2–3). `cre/` skeleton only |
 | Privy | Autonomous agent wallets that report incidents without user interaction | Planned (Week 2, `sdk/src/privy.ts`) |

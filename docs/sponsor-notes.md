@@ -176,7 +176,7 @@
 | Bounty | "Best Use of Envio" — indexer drives a core feature (real-time risk updates) |
 | Value | $1,000 |
 | Sponsor | Envio |
-| Status | **NOT REGISTERED** |
+| Status | **TOKEN OBTAINED + INDEXER WORKING** (2026-09-16). Stack verified indexing live Monad testnet events end-to-end |
 | Signup URL | https://envio.dev/app/api-tokens (free API token; only needed for HyperSync) |
 
 **Env vars it produces** (verbatim):
@@ -196,6 +196,8 @@
 |---|---|
 | Free **Development** plan: soft limits 100k events / 5GB / 7-day idle. | VERIFIED |
 | Self-hostable via Docker (postgres + hasura + envio-indexer; example: `enviodev/local-docker-example`). | VERIFIED |
+| **Envio ships NO Windows binary** (only linux-x64, linux-x64-musl, linux-arm64, darwin-x64, darwin-arm64). On this machine the indexer MUST run via Docker/WSL. `envio codegen` and `envio start` cannot run natively. | VERIFIED (checked `optionalDependencies` of envio 2.32.12 and 3.10.0) |
+| The token works as `Authorization: Bearer <token>` against `https://10143.hypersync.xyz`. A request with no Authorization header answers `Your token is malformed`, which means "missing token", not "invalid token". | VERIFIED (live request) |
 | Requires **Node v22+** and **Docker** (WSL on Windows). | VERIFIED |
 | Monad **mainnet 143** and **testnet 10143** both on HyperSync. | VERIFIED |
 | Monad public RPC caps `eth_getLogs` at a 100-block range — a second reason the indexer matters. | VERIFIED |
@@ -267,7 +269,7 @@ Human does these top to bottom. Each item names the env vars it fills in `.env.e
 
 - [ ] **0. Prereqs (no sponsor):** confirm `forge --version`; Node v22+ (have v24.16.0); Docker running; claim gas at https://faucet.monad.xyz and testnet USDC at https://faucet.circle.com (fills `MONAD_RPC_URL`, `MONAD_PRIVATE_KEY`, `MONAD_TESTNET_USDC`).
 - [ ] **1. Privy** — sign up at https://dashboard.privy.io, create app, enable agent wallets. **First check: does it demand a credit card?** (Week-1 gate.) Produces `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_PRIVATE_KEY`.
-- [ ] **2. Envio** — account + API token at https://envio.dev/app/api-tokens. Produces `ENVIO_API_TOKEN`. Non-blocking: fallback is `CONFIG_FILE=config.rpc.yaml` (token-free).
+- [x] **2. Envio** — DONE 2026-09-16. Token obtained, self-hosted Docker stack indexing live Monad events, GraphQL verified. See `indexer/README.md`.
 - [ ] **3. Nansen** — account + API key via https://nansen.ai/query. Produces `NANSEN_API_KEY`. Do **not** burn credits on `profiler/address/labels` (100 credits).
 - [ ] **4. Chainlink CRE** — account at https://app.chain.link/cre/discover, install CLI **v1.30.0+**, `cre account` login. Deploy approval (`cre account access`) can wait — simulate is free.
 - [ ] **5. Mera** — no account. Test a passkey at https://mera.category.xyz/demo on **desktop Chrome with the passkey saved in Google Password Manager**. Gate: PRF must return (else `PRF_UNAVAILABLE`).
