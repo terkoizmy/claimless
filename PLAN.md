@@ -44,12 +44,14 @@ claimless/
 │   │   ├── IncidentRegistry.sol   # report incident + stake
 │   │   ├── RiskScore.sol          # aggregate → score per agent
 │   │   ├── CoverPool.sol          # underwriter capital + premium
-│   │   └── ParametricTrigger.sol  # measurable condition → payout
+│   │   ├── ParametricTrigger.sol  # measurable condition → payout
+│   │   └── AgentIdentity.sol      # ERC-8004 adapter (register + publish summary)
 │   ├── test/
 │   │   ├── IncidentRegistry.t.sol
 │   │   ├── RiskScore.t.sol
 │   │   ├── CoverPool.t.sol
-│   │   └── ParametricTrigger.t.sol
+│   │   ├── ParametricTrigger.t.sol
+│   │   └── AgentIdentity.t.sol
 │   ├── script/
 │   │   └── Deploy.s.sol           # deploy to Monad testnet
 │   └── deployments/
@@ -75,7 +77,8 @@ claimless/
 │       ├── mera.ts                # Mera passkey integration (humans)
 │       ├── nansen.ts              # smart-money data
 │       ├── intents.ts             # Aurora Intents any-chain deposits
-│       └── envio.ts               # GraphQL queries
+│       ├── erc8004.ts             # read Identity/Reputation, publish summaries
+│       └── envio.ts              # GraphQL queries
 │
 ├── agents/                        # autonomous agent demos
 │   ├── reporter.ts                # agent that reports incidents
@@ -115,6 +118,7 @@ claimless/
 | 4 | Full `IncidentRegistry` tests + testnet deploy | Address in `deployments/` | Verified on explorer |
 | 5 | `RiskScore.sol` | Aggregation + weighting | Score emerges from incidents |
 | 6 | `RiskScore` tests + deploy | Contract address | Tests pass |
+| 6b | `AgentIdentity.sol` (ERC-8004 adapter) + tests | Register + publish summary | Reads/writes canonical testnet registries |
 | 7 | Envio indexer + Docker | GraphQL running locally | Data appears via query |
 
 **Week 1 gate:** Contracts deployed, incidents can be reported & read, indexer running.
@@ -127,6 +131,7 @@ claimless/
 | 9 | SDK: `privy.ts` (agent wallet) | Agent reports autonomously | No user interaction |
 | 10 | SDK: `envio.ts` (GraphQL queries) | Data from indexer | Live, not mocked |
 | 11 | SDK: `risk.ts` + cache/fallback | Score readable | Falls back to contract |
+| 11b | SDK: `erc8004.ts` (read Identity, publish Reputation summary) | Agent registers + score published on-chain | Visible via 8004scan / `getSummary` |
 | 12 | SDK: `mera.ts` (underwriter passkey) | Passkey login | **Google Password Manager** |
 | 13 | SDK: `nansen.ts` (smart-money) | Additional signal | Beyond raw data |
 | 14 | Aurora Intents: assets + `dry:true` quote + status tracker | `sdk/src/intents.ts` | Quote visible, no funds spent |
@@ -212,7 +217,51 @@ event PayoutExecuted(uint256 indexed coverageId, uint256 amount);
 
 **Critical rule:** `payout()` **must not** require human approval, voting, or a committee. If it does, we repeat the Nexus Mutual mistake.
 
+### AgentIdentity.sol (ERC-8004 adapter — CORE COMPONENT)
+
+ERC-8004 is the standard Track 04 names, and it is **already deployed on Monad testnet**. We do not fork it; we write into it.
+
+```solidity
+// Wraps the canonical ERC-8004 registries. Registry address is a constructor arg
+// so the same contract works on testnet and mainnet.
+interface IIdentityRegistry {
+    function register(string calldata agentURI) external returns (uint256 agentId);
+    function getAgentWallet(uint256 agentId) external view returns (address);
+    function ownerOf(uint256 agentId) external view returns (address);
+}
+interface IReputationRegistry {
+    function giveFeedback(uint256 agentId, int128 value, uint8 valueDecimals,
+                          string calldata tag1, string calldata tag2,
+                          string calldata endpoint, string calldata feedbackURI,
+                          bytes32 feedbackHash) external;
+    function getSummary(uint256 agentId, address[] calldata clients,
+                        string calldata tag1, string calldata tag2)
+        external view returns (uint256 count, int128 summaryValue, uint8 summaryValueDecimals);
+}
+
+// Claimless functions
+function registerAgent(string calldata agentURI) external returns (uint256 agentId);
+function publishRiskSummary(uint256 agentId) external;   // aggregate Incidents → giveFeedback
+function getAgentRisk(uint256 agentId) external view returns (int128 score, uint8 decimals);
+```
+
+**Design rules:**
+- **Never** rate our own agent's incident (ERC-8004 blocks self-feedback anyway).
+- `tag1` should be a fixed taxonomy string, e.g. `"claimless:incident"`, so consumers can filter.
+- Push a **summary**, not raw events, into Reputation. Rich data stays in `IncidentRegistry`.
+- Make registry addresses configurable per network; do **not** hardcode.
+
+**Addresses (VERIFIED on-chain):**
+
+| Network | IdentityRegistry | ReputationRegistry |
+|---|---|---|
+| Monad testnet (10143) | `0x8004A818BFB912233c491871b3d84c89A494BD9e` | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
+| Monad mainnet (143) | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
+
+**Why this is a differentiator, not decoration:** ERC-8004 has **1,821 agents on Monad testnet and essentially zero feedback** (verified). Everyone else stops at registration. We are the layer that actually populates reputation, with staked evidence behind it.
+
 ---
+
 
 ## 4. Demo Scenario (2-3 minutes)
 

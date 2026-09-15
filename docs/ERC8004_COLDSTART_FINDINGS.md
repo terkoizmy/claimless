@@ -90,15 +90,26 @@ That makes Claimless complementary infrastructure, not a competing registry.
 
 | Item | Value | Verification |
 |---|---|---|
-| ERC-8004 Identity Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | `eth_getCode` on Monad mainnet (chain 143) returns an EIP-1967 proxy |
+| ERC-8004 Identity Registry (mainnet) | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | `eth_getCode` on Monad mainnet (chain 143) returns an EIP-1967 proxy |
+| ERC-8004 Reputation Registry (mainnet) | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` | same bytecode (proxy) |
 | Its name | `AgentIdentity` | `name()` returned "AgentIdentity" |
-| ERC-8004 Reputation Registry | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` | same bytecode (proxy) |
 | Chain | **Monad MAINNET** (chain 143) | `eth_chainId` = `0x8f` |
-| Monad **testnet** (10143) | **NOT deployed** | `eth_getCode` returned `0x` at both addresses |
-| `totalSupply()` | **reverts** | the registry does not expose a counter; use the indexer API instead |
-| Recent Identity transfer events | **0** in a ~100-block window probed | `eth_getLogs` (note: RPC caps ranges at 100 blocks) |
+| **ERC-8004 Identity (Monad TESTNET)** | **`0x8004A818BFB912233c491871b3d84c89A494BD9e`** | **`eth_getCode` on testnet (10143) returns a deployed proxy** |
+| **ERC-8004 Reputation (Monad TESTNET)** | **`0x8004B663056A597Dffe9eCcC1965A193B7388713`** | **deployed (same bytecode)** |
+| Testnet registry name | `AgentIdentity` | `name()` returned "AgentIdentity" |
+| Monad testnet agents registered | **1,821** | 8004scan API, `chain_id=10143`, `is_testnet=true` |
+| `totalSupply()` | **reverts** | the registry does not expose a counter; use an indexer API instead |
+
+**CORRECTION to an earlier note in this document:** ERC-8004 *is* deployed on Monad **testnet**, exactly as the upstream repo advertises. The first probe failed because it used the **mainnet** address (`0x8004A169...`) against the testnet RPC. Testnet uses a **different address pair** (`0x8004A818...` / `0x8004B663...`). See §10.
+
+**Agent ID format** (from a live testnet record):
+```
+agent_registry = "10143:0x8004a818bfb912233c491871b3d84c89a494bd9e"
+agent_id       = 1866
+```
 
 **Important practical note:** Monad's public RPC limits `eth_getLogs` to a **100-block range**, so counting agents on-chain directly is impractical (105M+ blocks). Use the 8004scan API or a Monad indexer (Envio) instead.
+
 
 ## 7. Supporting ecosystem facts
 
@@ -161,3 +172,102 @@ Track 04 ("Trust, Identity & AI Infrastructure", $30,000 / 3 teams) explicitly l
 | `https://x402-facilitator.molandak.org/supported` | supported networks/schemes, signers (VERIFIED) |
 | `https://monad.xyz/metropolis` | tracks, bounty list, judges (VERIFIED) |
 | `https://docs.monad.xyz/tooling-and-infra/agentic-payments.md` | facilitator URL, MPP SDK (VERIFIED) |
+
+---
+
+## 10. Address map and the "deploy our own" decision
+
+### 10.1 ERC-8004 is deterministic-address across every chain
+
+Every chain uses one of exactly **two** address pairs. Source: upstream `erc-8004-contracts` README (VERIFIED).
+
+| Network class | IdentityRegistry | ReputationRegistry |
+|---|---|---|
+| **Mainnet** (all chains) | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
+| **Testnet** (all chains) | `0x8004A818BFB912233c491871b3d84c89A494BD9e` | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
+
+**Monad specifically:**
+
+| Network | IdentityRegistry | ReputationRegistry |
+|---|---|---|
+| Monad Mainnet (143) | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
+| **Monad Testnet (10143)** | **`0x8004A818BFB912233c491871b3d84c89A494BD9e`** | **`0x8004B663056A597Dffe9eCcC1965A193B7388713`** |
+
+Both Monad testnet addresses were verified live: `eth_getCode` returns a deployed EIP-1967 proxy and `name()` returns `AgentIdentity`.
+
+### 10.2 Decision: use the canonical testnet deployment, do NOT deploy our own
+
+An earlier hypothesis was to deploy our own registries because testnet "probably" lacked them. **That is now disproven.** Recommendation:
+
+**Use the canonical Monad testnet registries (`0x8004A818...` / `0x8004B663...`).**
+
+Why:
+
+| Factor | Use canonical | Deploy our own |
+|---|---|---|
+| Judge recognition | ✅ Standard, recognisable | ❌ Looks like a fork |
+| Interop with other Monad testnet agents (1,821 already registered) | ✅ Free | ❌ Isolated island |
+| Effort | ✅ Zero | ❌ Non-trivial, and must track the spec |
+| Risk of spec drift | ✅ Maintained by the 8004 team | ❌ Ours to maintain |
+
+### 10.3 But do deploy one extra contract: our reporting layer
+
+The canonical registries give us **identity** (`register`, `agentURI`) and **generic feedback** (`giveFeedback`, `getSummary`). They do **not** give us the thing that solves cold start. So we add **one** contract of our own:
+
+`IncidentRegistry.sol` — the staked, evidence-hashed reporting layer:
+
+- `reportIncident(agentId, kind, severity, evidenceHash) payable` — requires a **stake**
+- challenge/slashing path for false reports
+- emits `IncidentReported(agentId, kind, severity, reporter, stake)`
+
+**Then we bridge our records into ERC-8004's Reputation Registry** via `giveFeedback(...)`, so:
+
+- our data is the **rich, staked** layer (what underwriters price against),
+- and ERC-8004 carries the **portable summary** any other consumer can read.
+
+This is exactly the "write into it rather than compete" position from §5.5, now with concrete addresses.
+
+### 10.4 Useful interface facts for implementation
+
+From the upstream README (VERIFIED):
+
+- Identity is an **ERC-721 with `ERC721URIStorage`**; `agentId` is the token ID.
+- `register(...)` mints; `setAgentURI(agentId, uri)` updates the registration file.
+- Reserved metadata key **`agentWallet`**: set on registration, updatable only with an **EIP-712 / ERC-1271** proof, cleared on transfer. Helpers: `getAgentWallet`, `unsetAgentWallet`.
+- Reputation feedback is a **signed fixed-point** pair: `value` (`int128`) + `valueDecimals` (`uint8`, 0-18).
+- **Self-feedback is prevented** on-chain (owner/operator cannot rate its own agent).
+- `getSummary(agentId, clientAddresses[], tag1, tag2)` returns `(count, summaryValue, summaryValueDecimals)` and **requires a non-empty `clientAddresses`** to reduce Sybil risk.
+- `revokeFeedback` and `appendResponse` exist.
+- **Validation Registry is explicitly still under update** with the TEE community; do not build on it.
+- Payment rails are **out of scope** for ERC-8004 by design — which is why x402 is the right payment layer to pair with it (§7.1).
+- License is **CC0** (public domain), so reuse carries no restriction.
+- Upstream repo layout: `contracts/IdentityRegistryUpgradeable.sol`, `ReputationRegistryUpgradeable.sol`, `ValidationRegistryUpgradeable.sol`, plus `abis/` and `ignition/modules/`.
+
+### 10.5 Testnet activity (context)
+
+| Metric | Value |
+|---|---|
+| All testnet agents across chains | 322,546 |
+| **Monad testnet agents** | **1,821** |
+| Feedback on a sampled Monad testnet agent | 0 |
+
+Testnet is active enough to be a real environment (1,821 agents already there), and equally devoid of reputation feedback — consistent with §1.
+
+### 10.6 Summary of the architecture
+
+```
+ERC-8004 (canonical, already deployed on Monad testnet)
+  Identity Registry   0x8004A818...  ── who the agent is
+  Reputation Registry 0x8004B663...  ── portable trust summary
+        ▲
+        │  Claimless writes summaries into it
+        │
+Claimless (ours, deployed by us)
+  IncidentRegistry.sol ── staked, evidence-hashed incidents
+  RiskScore.sol        ── aggregation
+  CoverPool.sol        ── underwriter capital
+  ParametricTrigger.sol── automatic payout
+```
+
+We build the layer ERC-8004 is missing, and we publish into ERC-8004 so the data is portable. Neither duplicates the other.
+
