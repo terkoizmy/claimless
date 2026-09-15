@@ -49,6 +49,16 @@ interface IIdentityRegistry {
 
     function balanceOf(address owner) external view returns (uint256);
 
+    // ERC-721 transfer surface (present in the official ABI). Needed so the
+    // Claimless adapter can hand the freshly minted agent NFT to the operator
+    // instead of holding it, which would otherwise make every subsequent
+    // `giveFeedback` for that agent a blocked self-feedback.
+    function transferFrom(address from, address to, uint256 tokenId) external;
+
+    function safeTransferFrom(address from, address to, uint256 tokenId) external;
+
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external;
+
     function name() external view returns (string memory);
 
     function symbol() external view returns (string memory);
