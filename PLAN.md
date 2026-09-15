@@ -94,6 +94,21 @@ claimless/
 │   │   └── index.ts
 │   └── README.md
 │
+├── mcp/                           # MCP server — COLD-START DISTRIBUTION FIX
+│   ├── package.json               # needs "mcpName" field for registry verification
+│   ├── server.json                # Official MCP Registry manifest
+│   ├── src/
+│   │   ├── index.ts               # stdio transport
+│   │   └── tools/
+│   │       ├── identity.ts        # get_agent_identity
+│   │       ├── risk.ts            # get_agent_risk
+│   │       ├── incidents.ts       # list_incidents
+│   │       └── report.ts          # report_incident (write)
+│   └── README.md
+│
+├── integrations/                  # thin adapters over the same sdk/
+│   └── langchain/                 # LangChain + Vercel AI tool definitions
+│
 ├── web/                           # Next.js dashboard
 │   ├── package.json
 │   ├── app/
@@ -160,6 +175,8 @@ claimless/
 | 18b | Wire Aurora Intents quote into "Deposit from any chain" UI | Deposit panel | Any-chain deposit visible |
 | 19 | End-to-end demo v1 | Full scenario | 8 steps work |
 | 19b | MetaMask Agent Wallet plugin (`mm claimless report/risk/agent`) | Published npm package | `mm plugins install` works on Monad testnet |
+| 19c | **MCP server published to npm + Official MCP Registry** | `npx -y @scope/claimless-mcp` | Registry search finds it |
+| 19d | LangChain + Vercel AI adapters over the same SDK | Importable tools | Example agent uses one |
 | 20 | Demo polish + bug fixes | Stable demo | Repeatable |
 | 21 | Record 2-3 minute video | `docs/demo-script.md` + video | Video done |
 

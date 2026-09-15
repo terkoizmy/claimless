@@ -155,7 +155,7 @@ Premium of 2–5% of coverage value (Nexus: 2.5–6.5% p.a.). **Requires a capit
 
 | Risk | Level | Mitigation |
 |---|---|---|
-| **Cold start** (who reports?) | 🔴 High | Reliability badge (reporting becomes a marketing tool) + anti-spam stake. **Unproven.** See the verified evidence below. |
+| **Cold start** (who reports?) | 🔴 High | **Two-part fix:** (1) *access* — MCP server + agent-wallet plugin make reporting one line away; (2) *incentive* — stake/slashing + paid disclosure. Part 1 is buildable now; part 2 is the open problem. See the verified evidence below. |
 | **Small market** (DeFi insurance category is only $122M) | 🟠 Medium-high | Sell **data**, not insurance. The risk-data market is far larger |
 | **Basis risk** (trigger ≠ actual loss) | 🟠 Medium | **Narrow, deterministic** triggers: latency, HTTP status, completion rate |
 | **Regulation** (selling insurance without a license) | 🔴 High | **Never call it "insurance"**. Call it a "risk registry + coverage prototype" |
@@ -177,7 +177,19 @@ We measured the one place the problem was already attempted at scale. ERC-8004 (
 
 **Why:** feedback is free, optional, and unpunished. Nobody gains by reporting and the harmed party has already moved on.
 
-**What it means for us:** this is not a reason to abandon Claimless, it is the sharpest possible statement of the problem we solve. Our mechanism must put a **cost on silence and a reward on disclosure**. See `docs/ERC8004_COLDSTART_FINDINGS.md` for the full measurement, on-chain verification, and the correct integration path (write into ERC-8004's registries rather than compete with them).
+**What it means for us:** this is not a reason to abandon Claimless, it is the sharpest possible statement of the problem we solve. See `docs/ERC8004_COLDSTART_FINDINGS.md` for the full measurement, on-chain verification, and the correct integration path (write into ERC-8004's registries rather than compete with them).
+
+### How we attack it: distribution + incentive (honest split)
+
+| Cause of silence | Fixed by | Status |
+|---|---|---|
+| Reporting needs **custom integration** | **MCP server on npm + Official MCP Registry, plus a MetaMask Agent Wallet plugin** | ✅ Buildable now, $0 |
+| Reporting is **optional** | Incentive design (stake, paid disclosure via x402) | ⚠️ **Open problem** |
+| Skipping is **unpunished** | Stake/slashing on `IncidentRegistry` | ⚠️ Design, unproven |
+
+**Say this plainly:** a plugin does not by itself fill the registry. It removes the *access* barrier, which is one of three. The remaining two need the staked incentive design in `IncidentRegistry.sol`. Full reasoning in `docs/COLDSTART_DISTRIBUTION_STRATEGY.md`.
+
+**One important design consequence:** the three *read* MCP tools (`get_agent_identity`, `get_agent_risk`, `list_incidents`) make the product useful **before** anyone reports, by exposing ERC-8004 identity and risk lookups that already exist. That decouples early value from data volume.
 
 ---
 
