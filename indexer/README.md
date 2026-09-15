@@ -1,136 +1,149 @@
-# Claimless Indexer (Envio HyperIndex)
+# Envio Indexer — Claimless
 
 Indexes `IncidentRegistry` and `RiskScore` on **Monad testnet (chain 10143)** and
-serves the data as GraphQL (Hasura), so the dashboard and `sdk/src/envio.ts` read
-aggregates without any on-chain calls.
+serves the data over GraphQL (Hasura) so the dashboard and SDK read aggregates
+without on-chain calls.
 
-## Files
+## Status: working, verified live
 
-| File | Purpose |
+The stack runs and indexes real events end-to-end. Verified 2026-09-16:
+
+| Check | Result |
 |---|---|
-| `config.yaml` | HyperSync data source (default; needs `ENVIO_API_TOKEN`) |
-| `config.rpc.yaml` | RPC data source (token-free; needs `MONAD_RPC_URL`) |
-| `schema.graphql` | Entities: `Agent`, `Incident`, `Challenge`, `ScoreSnapshot` |
-| `src/EventHandlers.ts` | Handlers for the 5 indexed events |
-| `docker-compose.yaml` | Self-hosted stack: postgres + hasura + indexer |
-| `Dockerfile` | Indexer container image |
-| `.env.example` | All environment variables, documented |
+| Indexer ready | `The indexer is ready. Switching to realtime indexing.` |
+| `IncidentReported` | 1 row, correct `agentId`, `severity`, `reporter`, `txHash`, `blockNumber` |
+| `IncidentChallenged` | status flipped to `CHALLENGED`, `Challenge` entity created |
+| `ChallengeResolved` | `resolved=true`, `reportStands=true`, `winner` set |
+| `IncidentFinalized` | status `ACCEPTED` |
+| `Agent` aggregate | `incidentCount=1, acceptedCount=1, pendingCount=0, severitySum=4` |
+| `ScoreUpdated` | `ScoreSnapshot` recorded `oldScore=0 → newScore=87` |
+| Relation | `Incident.agent` resolves to the `Agent` row |
 
-## Prerequisites
+The indexed score (87) matches the on-chain `RiskScore.getScore(10182)` exactly.
 
-- **Node.js v22+** (`node -v`) — required by `envio@^2.x`
-- **pnpm** (`npm i -g pnpm` or `corepack enable`)
-- **Docker** — only for the self-hosted stack / `envio dev` services
-- Contract addresses for Monad testnet (see `contracts/deployments/monad-testnet.json`;
-  `incidentRegistry` and `riskScore` are `null` until `script/Deploy.s.sol` runs)
+## Prerequisite: Envio has no Windows binary
 
-## Indexed events (copied from the Solidity source)
+**Envio ships binaries only for `linux-x64`, `linux-x64-musl`, `linux-arm64`,
+`darwin-x64`, `darwin-arm64`.** There is no Windows build, so `envio codegen` and
+`envio start` cannot run natively on Windows. Docker is the supported path here.
 
-From `contracts/src/interfaces/IIncidentRegistry.sol`:
+This machine already runs Docker Desktop, so the self-hosted compose stack is the
+way to run it. (WSL2 with a Linux Node install would work too.)
 
-```solidity
-event IncidentReported(uint256 indexed agentId, uint256 indexed incidentId, bytes32 kind, uint8 severity, address indexed reporter);
-event IncidentChallenged(uint256 indexed incidentId, address indexed challenger);
-event IncidentFinalized(uint256 indexed incidentId, bool accepted);
-event ChallengeResolved(uint256 indexed incidentId, bool reportStands, address winner);
-```
+## Quick start
 
-From `contracts/src/RiskScore.sol`:
-
-```solidity
-event ScoreUpdated(uint256 indexed agentId, uint256 oldScore, uint256 newScore);
-```
-
-## Data source: HyperSync (default) vs RPC (token-free)
-
-**Path A — HyperSync (default, recommended).** Monad testnet 10143 is natively
-supported by HyperSync (`https://10143.hypersync.xyz`), so historical sync is
-very fast and needs no RPC.
-
-1. Get a free API token: open **https://envio.dev/app/api-tokens**, sign in,
-   create a token, copy it.
-2. Put it in `.env` as `ENVIO_API_TOKEN=...`.
-3. Use `CONFIG_FILE=config.yaml` (the default).
-
-**Path B — RPC (token-free).** If you do not want a token at all:
-
-1. Set `MONAD_RPC_URL` (defaults to `https://testnet-rpc.monad.xyz`).
-2. Set `CONFIG_FILE=config.rpc.yaml` — that config declares `rpc_config`, which
-   tells HyperIndex to use the RPC as the sync source instead of HyperSync.
-
-Note: there is **no `ENVIO_USE_RPC` switch** in Envio's runtime env vars. The
-supported way to pick the sync source is which `CONFIG_FILE` you run (the
-`rpc_config` block in `config.rpc.yaml` is what flips the data source). Both
-configs index identical events with identical handlers; only the fetch layer
-differs, and RPC sync is slower and rate-limited.
-
-## Run locally (`envio dev`, managed Docker)
-
-```bash
+```batch
 cd indexer
-cp .env.example .env
-# fill INCIDENT_REGISTRY_ADDRESS / RISK_SCORE_ADDRESS (after deploy) and
-# ENVIO_API_TOKEN (Path A) or MONAD_RPC_URL + CONFIG_FILE=config.rpc.yaml (Path B)
-
-pnpm install
-pnpm envio codegen
-pnpm envio dev          # starts postgres+hasura, indexes, serves GraphQL
-```
-
-`envio dev` uses `ENVIO_PG_PORT` for its local Postgres; `.env.example` sets
-**5433** so it cannot collide with the Postgres already on **5432** on this
-machine (container `agentic-scraper-postgres` and a local Postgres).
-
-## Self-hosted (docker compose)
-
-```bash
-cd indexer
-cp .env.example .env          # fill contract addresses + token/RPC choice
+copy .env.example .env
+:: fill INCIDENT_REGISTRY_ADDRESS, RISK_SCORE_ADDRESS and ENVIO_API_TOKEN
 docker compose up -d --build
 ```
 
-### Ports used (this machine)
+Then query:
+
+```bash
+curl http://localhost:8081/v1/graphql \
+  -H 'Content-Type: application/json' \
+  -H 'x-hasura-admin-secret: testing' \
+  -d '{"query":"{ Agent { id incidentCount acceptedCount severitySum currentScore } Incident { id status severity } }"}'
+```
+
+## Ports used (this machine)
 
 | Service | Host port | Container port | Note |
 |---|---|---|---|
-| Postgres | **5433** | 5432 | 5432 is taken by `agentic-scraper-postgres` + local Postgres — do not remap |
-| Hasura | **8081** | 8080 | 8080 may be taken; console at http://localhost:8081/console |
-| Indexer metrics/health | 9898 | 9898 | bound to `127.0.0.1` |
+| Postgres | **5433** | 5432 | 5432 is taken by `agentic-scraper-postgres` + a local Postgres — do not remap |
+| Hasura | **8081** | 8080 | Console at http://localhost:8081/console |
+| Indexer metrics | **9898** | 9898 | Bound to `127.0.0.1` |
 
-Inside the compose network services talk on their standard ports (postgres
-5432, hasura 8080); only host mappings are shifted.
+Inside the compose network services talk on their standard ports; only the
+host-side mappings are shifted.
 
-## Verify data
+## Data sources
 
-```bash
-# GraphQL endpoint (self-hosted):
-curl http://localhost:8081/v1/graphql \
-  -H 'x-hasura-admin-secret: testing' \
-  -H 'content-type: application/json' \
-  -d '{"query":"{ Agent { id incidentCount acceptedCount severitySum currentScore } Incident(limit: 5, orderBy: {id: desc}) { id severity status reporter } }"}'
+`CONFIG_FILE` selects the sync source:
+
+| File | Source | Needs |
+|---|---|---|
+| `config.yaml` | HyperSync (`https://10143.hypersync.xyz`) | `ENVIO_API_TOKEN` (free, https://envio.dev/app/api-tokens) |
+| `config.rpc.yaml` | `MONAD_RPC_URL` | nothing — fully token-free |
+
+Both index the same events with the same handlers.
+
+> **Verified:** HyperSync for chain 10143 accepts the token as
+> `Authorization: Bearer <token>`. A request with **no** Authorization header
+> returns `Your token is malformed` — that message means "no token", not "bad token".
+
+## Configuration notes (each was a real failure, do not undo)
+
+1. **Contract addresses are required at `codegen` time.** `config.yaml`
+   interpolates `${INCIDENT_REGISTRY_ADDRESS}` / `${RISK_SCORE_ADDRESS}`, so the
+   Dockerfile takes them as build args. The default is a zero address so the
+   image can still be built; pass real values to build a usable image.
+
+2. **Do not declare `agent_id` / `incident_id` in `schema.graphql`.** Envio
+   generates those columns for the `agent: Agent!` / `incident: Incident!`
+   relations. Hand-declaring them collides and the insert fails with
+   `cannot cast type bigint to integer[]`.
+
+3. **Set relations with `<field>_id` in handlers**, e.g. `agent_id: agentId`.
+   Without it the FK column stays NULL and the insert fails the not-null
+   constraint.
+
+4. **Solidity `uint8` arrives as `bigint`.** The `severity` field is `Int` in the
+   schema, so it needs `Number(event.params.severity)`, otherwise the insert fails
+   with `cannot cast type bigint to integer[]`.
+
+5. **`event.transaction` and `event.block.timestamp` are empty unless declared.**
+   Use the `fields` option per registration:
+   ```ts
+   { contract: "IncidentRegistry", event: "IncidentReported",
+     fields: { transaction: ["hash"], block: ["timestamp"] } }
+   ```
+   Reading an undeclared field yields `undefined`, which surfaces as
+   `Cannot convert undefined to a BigInt` or a `txHash` not-null violation.
+
+6. **`Timestamp!` fields need a `Date`, not a number.** `firstSeenAt` and
+   `lastActiveAt` are `BigInt!` for exactly this reason; using `Timestamp!` with a
+   unix-seconds number fails with `date.toISOString is not a function`.
+
+7. **`start_block` is baked into the checkpoint.** Changing it after data exists is
+   rejected as an incompatible config change. Reset with `docker compose down -v`
+   (or `envio start -r`) when you change it.
+
+8. **Package `"type": "module"` is required** (envio v3 is ESM). It is correct to
+   keep it; the earlier ESM failure was caused by a stale image built outside
+   compose, not by this setting.
+
+## Package versions
+
+| Package | Version |
+|---|---|
+| `envio` | `^3.6.1` (resolves to 3.10.x) |
+| `node` (image) | `24.3.0-slim` |
+| `postgres` | `17.5` |
+| `hasura/graphql-engine` | `v2.43.0` |
+
+## Layout
+
+```
+indexer/
+├── config.yaml            # HyperSync source (needs ENVIO_API_TOKEN)
+├── config.rpc.yaml        # RPC source (token-free)
+├── schema.graphql         # Agent, Incident, Challenge, ScoreSnapshot
+├── src/EventHandlers.ts   # envio v3 handlers (indexer.onEvent)
+├── abis/                  # ABIs extracted from contracts/out (forge artifacts)
+├── tsconfig.json          # matches Envio's official example
+├── envio-env.d.ts         # wires generated types into the `envio` module
+├── Dockerfile
+└── docker-compose.yaml
 ```
 
-The `raw_events` table (enabled via `raw_events: true`) is also available
-through Hasura for debugging.
+## Troubleshooting
 
-## Schema highlights (dashboard-facing aggregates)
-
-`Agent` carries derived fields so the UI does not need on-chain calls:
-`incidentCount`, `acceptedCount`, `rejectedCount`, `pendingCount`, `severitySum`
-(sum of severity over accepted incidents, mirroring
-`IncidentRegistry.getAcceptedSeveritySum`), `avgSeverity`, and `currentScore`
-(last `RiskScore.ScoreUpdated` value).
-
-## Uncertainties / notes
-
-- `envio@^2.0.0` resolves to the latest 2.x (`2.32.6` at scaffold time, per
-  npm dist-tags; 3.x is the current major). If the pin fails to install or
-  codegen, note the error and re-pin deliberately (e.g. `^2.32.0`, or migrate
-  to `^3.0.0` following https://docs.envio.dev/docs/HyperIndex/migrate-to-v3).
-- Contract addresses are intentionally unresolved until `Deploy.s.sol`
-  broadcasts; `codegen` works without them (config interpolation is textual),
-  but `envio dev/start` requires them set.
-- Handler code targets the V2 generated-API (`IncidentRegistry.X.handler`,
-  `context.Entity.get/set`, `event.stake` as `BigInt`-decoded `msg.value`).
-- Ports can be overridden via `ENVIO_PG_PORT` / `HASURA_EXTERNAL_PORT`, but
-  keep 5433/8081 on this machine (see the port rule above).
+```batch
+docker compose logs envio-indexer --tail 50
+docker compose ps
+:: reset all indexed data and start over
+docker compose down -v && docker compose up -d --build
+```

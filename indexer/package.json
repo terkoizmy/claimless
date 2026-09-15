@@ -15,7 +15,7 @@
     "docker:down": "docker compose down"
   },
   "dependencies": {
-    "envio": "^2.0.0"
+    "envio": "^3.6.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

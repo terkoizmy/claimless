@@ -5,35 +5,29 @@ description: >-
   Indexes IncidentRegistry (IncidentReported, IncidentChallenged,
   ChallengeResolved, IncidentFinalized) and RiskScore (ScoreUpdated).
 
-# Primary data source: HyperSync (chain 10143 is natively supported by
-# HyperSync: https://10143.hypersync.xyz). HyperSync access requires a free
-# ENVIO_API_TOKEN (https://envio.dev/app/api-tokens). For a token-free run,
-# use config.rpc.yaml (RPC data source) instead; see README.md.
+# Recommended: no cross-chain ordering needed for a single-chain indexer.
+disable_default_cross_chain: true
+
 contracts:
   - name: IncidentRegistry
-    handler: src/EventHandlers.ts
+    abi_file_path: ./abis/IncidentRegistry.json
+    handler: ./src/EventHandlers.ts
     events:
       - event: "IncidentReported(uint256 indexed agentId, uint256 indexed incidentId, bytes32 kind, uint8 severity, address indexed reporter)"
       - event: "IncidentChallenged(uint256 indexed incidentId, address indexed challenger)"
       - event: "IncidentFinalized(uint256 indexed incidentId, bool accepted)"
       - event: "ChallengeResolved(uint256 indexed incidentId, bool reportStands, address winner)"
   - name: RiskScore
-    handler: src/EventHandlers.ts
+    abi_file_path: ./abis/RiskScore.json
+    handler: ./src/EventHandlers.ts
     events:
       - event: "ScoreUpdated(uint256 indexed agentId, uint256 oldScore, uint256 newScore)"
 
-# Field selection: block.timestamp is fetched by default in V2 (number,
-# timestamp, hash), but listing it explicitly documents the dependency of
-# the handlers on it.
-field_selection:
-  block_fields:
-    - timestamp
-
-networks:
+chains:
   - id: 10143 # Monad testnet
-    # start_block 0 is safe with HyperSync: it fast-forwards to the first
-    # block containing data for the configured contract addresses.
-    start_block: 0
+    # start_block 0 is safe with HyperSync: it fast-forwards to the first block
+    # containing data for the configured contract addresses.
+    start_block: 62821000
     contracts:
       - name: IncidentRegistry
         # Filled by script/Deploy.s.sol after broadcast; also mirrored in
@@ -42,12 +36,3 @@ networks:
       - name: RiskScore
         # Same requirement; mirrored in monad-testnet.json -> contracts.riskScore
         address: "${RISK_SCORE_ADDRESS}"
-
-# Reorg handling: rollback_on_reorg defaults to true; kept explicit for review.
-rollback_on_reorg: true
-
-# Enable batched entity preloads (recommended for envio >= 2.27).
-preload_handlers: true
-
-# Store raw events for debugging/demo verification in Hasura (raw_events table).
-raw_events: true

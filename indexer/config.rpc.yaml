@@ -1,41 +1,40 @@
 # yaml-language-server: $schema=./node_modules/envio/evm.schema.json
 name: claimless-indexer-rpc
 description: >-
-  Token-free RPC data-source variant of the Claimless indexer for Monad
-  testnet (chain 10143). Same schema, same events, same handlers as
-  config.yaml; only the sync source differs (RPC instead of HyperSync).
-  Requires MONAD_RPC_URL. Does NOT require ENVIO_API_TOKEN.
+  Token-free variant of the Claimless indexer: reads from MONAD_RPC_URL instead
+  of HyperSync, so no ENVIO_API_TOKEN is required. Slower to backfill, but costs
+  nothing and needs no account.
+
+disable_default_cross_chain: true
 
 contracts:
   - name: IncidentRegistry
-    handler: src/EventHandlers.ts
+    abi_file_path: ./abis/IncidentRegistry.json
+    handler: ./src/EventHandlers.ts
     events:
       - event: "IncidentReported(uint256 indexed agentId, uint256 indexed incidentId, bytes32 kind, uint8 severity, address indexed reporter)"
       - event: "IncidentChallenged(uint256 indexed incidentId, address indexed challenger)"
       - event: "IncidentFinalized(uint256 indexed incidentId, bool accepted)"
       - event: "ChallengeResolved(uint256 indexed incidentId, bool reportStands, address winner)"
   - name: RiskScore
-    handler: src/EventHandlers.ts
+    abi_file_path: ./abis/RiskScore.json
+    handler: ./src/EventHandlers.ts
     events:
       - event: "ScoreUpdated(uint256 indexed agentId, uint256 oldScore, uint256 newScore)"
 
-field_selection:
-  block_fields:
-    - timestamp
-
-networks:
-  - id: 10143 # Monad testnet
+# RPC data source: no HyperSync token needed. The public Monad testnet RPC caps
+# eth_getLogs at a 100-block range, so set a recent start_block when backfill
+# would be expensive.
+rpc:
+  - id: 10143
     start_block: 0
-    # The presence of rpc_config switches this network to RPC as data source.
-    rpc_config:
-      # https://testnet-rpc.monad.xyz per contracts/deployments/monad-testnet.json
-      url: "${MONAD_RPC_URL}"
+    url: "${MONAD_RPC_URL}"
+
+chains:
+  - id: 10143
+    start_block: 0
     contracts:
       - name: IncidentRegistry
         address: "${INCIDENT_REGISTRY_ADDRESS}"
       - name: RiskScore
         address: "${RISK_SCORE_ADDRESS}"
-
-rollback_on_reorg: true
-preload_handlers: true
-raw_events: true
