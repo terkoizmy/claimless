@@ -2,8 +2,52 @@
 
 > Chain 10143 · Deployed 2026-09-16 · Deployer `0xF601a214CF0FFf4741e7DD405FB5A75B46388395`
 
-All three Claimless contracts are deployed and **exercised end-to-end on-chain**. Every
-claim below has a real transaction behind it.
+All three Claimless contracts are deployed, **source-verified**, and **exercised
+end-to-end on-chain**. Every claim below has a real transaction behind it.
+
+## Verification status: VERIFIED (exact match, all three)
+
+Source is published and matches the deployed bytecode exactly.
+
+| Contract | Address | Sourcify match |
+|---|---|---|
+| `IncidentRegistry` | `0xF856AC417597eb1aD952CEeb963FD51B1D2789cF` | `exact_match` (matchId 1854978) |
+| `RiskScore` | `0xF61B247543D0719c74D222057E3dd49F863f87f9` | `exact_match` (matchId 1854979) |
+| `AgentIdentity` | `0x7eFC535445E323fC50BF652D3fc42332057Ae703` | `exact_match` (matchId 1854980) |
+
+Method: Sourcify via MonadVision's verifier (no API key needed).
+
+```batch
+set "PATH=%PATH%;C:\Users\terkoiz\.foundry\bin"
+cd contracts
+forge verify-contract <ADDRESS> src/<File>.sol:<Contract> ^
+  --chain 10143 ^
+  --verifier sourcify ^
+  --verifier-url https://sourcify-api-monad.blockvision.org/
+```
+
+Check a job:
+```
+curl https://sourcify-api-monad.blockvision.org/v2/verify/<JOB_ID>
+```
+
+View: https://testnet.monadscan.com/address/0xF856AC417597eb1aD952CEeb963FD51B1D2789cF
+(MonadVision's address pages are behind bot protection, but the contract is
+verified in MonadVision's own Sourcify instance — the source reads through.)
+
+### Optional foundry.toml settings for verification
+
+Monad's docs recommend these so the metadata does not depend on IPFS:
+
+```toml
+metadata = true
+metadata_hash = "none"   # disable ipfs
+use_literal_content = true
+```
+
+They were **not** needed here: our existing settings (solc 0.8.20, optimizer 200,
+cancun) produced an exact match on the first attempt. Keep them in mind only if a
+future change breaks verification.
 
 ## Addresses
 
@@ -108,3 +152,11 @@ forge script script/Deploy.s.sol --rpc-url https://testnet-rpc.monad.xyz --broad
 
 The script fails loudly if either canonical ERC-8004 registry is missing bytecode, because
 Monad testnet can be reset and canonical contracts redeployed.
+
+Then verify each contract against MonadVision's Sourcify instance:
+
+```batch
+forge verify-contract 0xF856AC417597eb1aD952CEeb963FD51B1D2789cF src/IncidentRegistry.sol:IncidentRegistry --chain 10143 --verifier sourcify --verifier-url https://sourcify-api-monad.blockvision.org/
+forge verify-contract 0xF61B247543D0719c74D222057E3dd49F863f87f9 src/RiskScore.sol:RiskScore                  --chain 10143 --verifier sourcify --verifier-url https://sourcify-api-monad.blockvision.org/
+forge verify-contract 0x7eFC535445E323fC50BF652D3fc42332057Ae703 src/AgentIdentity.sol:AgentIdentity           --chain 10143 --verifier sourcify --verifier-url https://sourcify-api-monad.blockvision.org/
+```
