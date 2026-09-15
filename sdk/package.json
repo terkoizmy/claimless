@@ -1,0 +1,41 @@
+{
+  "name": "@claimless/sdk",
+  "version": "0.1.0",
+  "description": "Claimless SDK — read the on-chain agent risk registry and report incidents on Monad",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test --experimental-strip-types test/*.test.ts",
+    "registry:demo": "tsx scripts/registry-demo.ts",
+    "risk:demo": "tsx scripts/risk-demo.ts",
+    "envio:demo": "tsx scripts/envio-demo.ts",
+    "erc8004:demo": "tsx scripts/erc8004-demo.ts",
+    "intents:demo": "tsx scripts/intents-demo.ts",
+    "report": "tsx scripts/report.ts"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.3"
+  }
+}
