@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {IIdentityRegistry} from "./interfaces/IIdentityRegistry.sol";
 import {IReputationRegistry} from "./interfaces/IReputationRegistry.sol";
+import {IERC721Receiver} from "./interfaces/IERC721Receiver.sol";
 
 /// @title AgentIdentity
 /// @notice Adapter into the canonical ERC-8004 registries (Identity + Reputation).
@@ -19,7 +20,13 @@ import {IReputationRegistry} from "./interfaces/IReputationRegistry.sol";
 ///         - Never rate our own agent: ERC-8004's canonical registry blocks
 ///           self-feedback, so we enforce it upstream of the call as well.
 ///         - Push a summary, not raw events; rich data stays in IncidentRegistry.
-contract AgentIdentity {
+///         - The canonical registry mints with `_safeMint`, so this adapter must
+///           implement {IERC721Receiver} to hold the token for the instant
+///           between mint and the hand-off to the operator.
+/// @dev VERIFIED against upstream `IdentityRegistryUpgradeable.sol`: `register`
+///      uses `_safeMint(msg.sender, agentId)` and ids start at **0**
+///      (`agentId = $._lastId++`).
+contract AgentIdentity is IERC721Receiver {
     // ------------------------------------------------------------------
     // Errors
     // ------------------------------------------------------------------
@@ -122,6 +129,14 @@ contract AgentIdentity {
     /// @notice Owner of an agent registered through this adapter (0 if unknown).
     function ownerOfAgent(uint256 agentId) external view returns (address) {
         return _agentOwner[agentId];
+    }
+
+    /// @inheritdoc IERC721Receiver
+    /// @dev Required because the canonical registry uses `_safeMint`. The adapter
+    ///      only ever holds the token for the single call between mint and the
+    ///      hand-off to the operator, so this accepts any transfer.
+    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
     }
 
     // ------------------------------------------------------------------

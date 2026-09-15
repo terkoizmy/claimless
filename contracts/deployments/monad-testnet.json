@@ -1,22 +1,14 @@
 {
   "chainId": 10143,
   "network": "monad-testnet",
-  "status": "PENDING — filled by script/Deploy.s.sol after broadcast",
-  "deployer": null,
+  "deployer": "0xF601a214CF0FFf4741e7DD405FB5A75B46388395",
   "erc8004": {
     "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-    "reputationRegistry": "0x8004B663056A597Dffe9eCcC1965A193B7388713",
-    "_note": "Canonical ERC-8004 registries, already deployed. We write into them, never fork them."
+    "reputationRegistry": "0x8004B663056A597Dffe9eCcC1965A193B7388713"
   },
   "contracts": {
-    "incidentRegistry": null,
-    "riskScore": null,
-    "agentIdentity": null
-  },
-  "resources": {
-    "rpc": "https://testnet-rpc.monad.xyz",
-    "gasFaucet": "https://faucet.monad.xyz",
-    "usdcFaucet": "https://faucet.circle.com",
-    "usdc": "0x534b2f3A21130d7a60830c2Df862319e593943A3"
+    "incidentRegistry": "0xF856AC417597eb1aD952CEeb963FD51B1D2789cF",
+    "riskScore": "0xF61B247543D0719c74D222057E3dd49F863f87f9",
+    "agentIdentity": "0x7eFC535445E323fC50BF652D3fc42332057Ae703"
   }
 }

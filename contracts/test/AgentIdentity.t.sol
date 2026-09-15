@@ -6,6 +6,7 @@ import {Test} from "forge-std/Test.sol";
 import {AgentIdentity} from "../src/AgentIdentity.sol";
 import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
 import {IReputationRegistry} from "../src/interfaces/IReputationRegistry.sol";
+import {IERC721Receiver} from "../src/interfaces/IERC721Receiver.sol";
 
 /// @dev Declared to mirror the canonical registry's register(agentURI, metadata)
 ///      signature (defined in the interface file; redeclared here so the mock is
@@ -27,7 +28,7 @@ struct MetadataEntry {
 
 /// @dev Mirrors IdentityRegistryUpgradeable from the official ABI.
 contract MockIdentityRegistry is IIdentityRegistry {
-    uint256 public nextAgentId = 1;
+    uint256 public nextAgentId = 0;
 
     mapping(uint256 => address) private _ownerOf;
     mapping(uint256 => string) private _tokenURI;
@@ -49,10 +50,24 @@ contract MockIdentityRegistry is IIdentityRegistry {
         return _mint(msg.sender, agentURI);
     }
 
+    /// @dev Faithful to upstream IdentityRegistryUpgradeable.register():
+    ///      ids start at 0 and minting uses `_safeMint`, so a contract
+    ///      recipient must implement IERC721Receiver or this reverts with
+    ///      ERC721InvalidReceiver. Do not "simplify" this to a plain mint:
+    ///      that is exactly the bug the real registry caught for us.
     function _mint(address to, string memory agentURI) internal returns (uint256 agentId) {
         agentId = nextAgentId++;
         _ownerOf[agentId] = to;
         _tokenURI[agentId] = agentURI;
+
+        if (to.code.length > 0) {
+            require(
+                IERC721Receiver(to).onERC721Received(msg.sender, address(0), agentId, "") ==
+                    IERC721Receiver.onERC721Received.selector,
+                "ERC721InvalidReceiver"
+            );
+        }
+
         emit Registered(agentId, agentURI, to);
     }
 
@@ -390,8 +405,9 @@ contract AgentIdentityTest is Test {
         uint256 agentId = agentIdentity.registerAgent(URI);
         vm.stopPrank();
 
-        // Returned id matches the canonical registry's next id (mock starts at 1).
-        assertEq(agentId, 1, "agent id");
+        // Returned id matches the canonical registry's next id (upstream ids
+        // start at 0).
+        assertEq(agentId, 0, "agent id");
 
         // Forward mapping agentOf(owner) and reverse ownerOfAgent(id).
         assertEq(agentIdentity.agentOf(agentOwner), agentId, "agentOf mapping");
@@ -414,7 +430,7 @@ contract AgentIdentityTest is Test {
 
     function test_RegisterAgent_EmitsAgentRegistered() public {
         vm.expectEmit(true, true, false, true, address(agentIdentity));
-        emit AgentRegistered(1, agentOwner, URI);
+        emit AgentRegistered(0, agentOwner, URI);
 
         vm.prank(agentOwner);
         agentIdentity.registerAgent(URI);
