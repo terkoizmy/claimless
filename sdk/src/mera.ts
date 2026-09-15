@@ -404,22 +404,19 @@ function base64UrlDecode(value: string): Uint8Array {
 /* ─────────────────────────── key derivation ────────────────────────────── */
 
 /**
- * PRF output (32 bytes) → 24-word BIP-39 mnemonic → 64-byte BIP-32 seed.
+ * PRF output (32 bytes) → 24-word BIP-39 mnemonic.
  *
  * Byte-for-byte the pipeline documented on
  * https://mera.category.xyz/recipes/create-passkey-accounts/ ("Create a seed
- * from the PRF output"): the PRF bytes are BIP-39 entropy (24-word mnemonic),
- * then the standard BIP-39 seed function (PBKDF2-HMAC-SHA512, 2048 rounds,
- * salt "mnemonic") yields the 64-byte BIP-32 master seed. Implemented with
- * node:crypto/webcrypto so Node AND browsers both work with zero extra deps.
+ * from the PRF output"): the PRF bytes are BIP-39 entropy. Fully isomorphic
+ * (viem's sha256 + the inlined wordlist; no Node-only APIs), so
+ * `deriveManyKeys` works identically in Node and in browsers.
  */
-function prfOutputToSeed(prfOutput: Uint8Array): { mnemonic: string; seed: Uint8Array } {
+function prfOutputToMnemonic(prfOutput: Uint8Array): string {
   if (prfOutput.length !== 32) {
     throw new MeraError("DERIVATION_FAILED", `PRF output must be 32 bytes, got ${prfOutput.length}`);
   }
-  const mnemonic = mnemonicFromEntropy(prfOutput);
-  const seed = bip39SeedFromMnemonicSync(mnemonic);
-  return { mnemonic, seed };
+  return mnemonicFromEntropy(prfOutput);
 }
 
 /**
@@ -464,51 +461,53 @@ function hexToBytes(hex: `0x${string}`): Uint8Array {
 }
 
 /**
- * Standard BIP-39 seed: PBKDF2-HMAC-SHA512(mnemonic, "mnemonic", 2048, 64).
- * Synchronous via node:crypto under Node (used by deriveManyKeys and the
- * demo); browsers take the async Web Crypto variant (bip39SeedFromMnemonic
- * Async) inside the ceremonies.
+ * Standard BIP-39 seed: PBKDF2-HMAC-SHA512(mnemonic, "mnemonic", 2048, 64)
+ * → 64 bytes. Isomorphic async: Web Crypto `subtle` covers modern browsers
+ * AND Node ≥ 19 (global webcrypto); node:crypto `pbkdf2Sync` is the fallback
+ * for older Node. Only the async ceremonies call this, so no browser call
+ * site can reach Node-only code.
  */
-function bip39SeedFromMnemonicSync(mnemonic: string): Uint8Array {
-  const { pbkdf2Sync } = nodeRequire("node:crypto") as {
-    pbkdf2Sync(
-      password: string,
-      salt: string,
-      iterations: number,
-      keylen: number,
-      digest: string,
-    ): Buffer;
-  };
-  return new Uint8Array(
-    pbkdf2Sync(mnemonic.normalize("NFKD"), "mnemonic", 2048, 64, "sha512"),
-  );
-}
-
-/** Browser-path BIP-39 seed via Web Crypto. Used by the async ceremonies. */
 async function bip39SeedFromMnemonic(mnemonic: string): Promise<Uint8Array> {
   const rt = runtime();
-  if (!rt.crypto?.subtle) {
-    throw new MeraError("DERIVATION_FAILED", "crypto.subtle is unavailable in this runtime");
+  if (rt.crypto?.subtle) {
+    const encoder = new TextEncoder();
+    const key = await rt.crypto.subtle.importKey(
+      "raw",
+      encoder.encode(mnemonic.normalize("NFKD")),
+      "PBKDF2",
+      false,
+      ["deriveBits"],
+    );
+    const bits = await rt.crypto.subtle.deriveBits(
+      {
+        name: "PBKDF2",
+        hash: "SHA-512",
+        salt: encoder.encode("mnemonic"),
+        iterations: 2048,
+      },
+      key,
+      512,
+    );
+    return new Uint8Array(bits);
   }
-  const encoder = new TextEncoder();
-  const key = await rt.crypto.subtle.importKey(
-    "raw",
-    encoder.encode(mnemonic.normalize("NFKD")),
-    "PBKDF2",
-    false,
-    ["deriveBits"],
+  if (nodeRequire) {
+    const { pbkdf2Sync } = nodeRequire("node:crypto") as {
+      pbkdf2Sync(
+        password: string,
+        salt: string,
+        iterations: number,
+        keylen: number,
+        digest: string,
+      ): Buffer;
+    };
+    return new Uint8Array(
+      pbkdf2Sync(mnemonic.normalize("NFKD"), "mnemonic", 2048, 64, "sha512"),
+    );
+  }
+  throw new MeraError(
+    "DERIVATION_FAILED",
+    "no PBKDF2 implementation available (need Web Crypto subtle or Node crypto)",
   );
-  const bits = await rt.crypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      hash: "SHA-512",
-      salt: encoder.encode("mnemonic"),
-      iterations: 2048,
-    },
-    key,
-    512,
-  );
-  return new Uint8Array(bits);
 }
 
 /**
@@ -548,11 +547,12 @@ function buildAccount(
 }
 
 /** Turns a PRF output into the primary MeraAccount (index 0). */
-function prfOutputToAccount(
+async function prfOutputToAccount(
   prfOutput: Uint8Array,
   credential: MeraCredentialMetadata,
-): MeraAccount {
-  const { mnemonic, seed } = prfOutputToSeed(prfOutput);
+): Promise<MeraAccount> {
+  const mnemonic = prfOutputToMnemonic(prfOutput);
+  const seed = await bip39SeedFromMnemonic(mnemonic);
   const viemAccount = seedToEoa(mnemonic, 0);
   return buildAccount(viemAccount, prfOutput, 0, credential, mnemonic, seed);
 }
@@ -684,13 +684,13 @@ export async function createPasskeyAccount(opts: CreatePasskeyAccountOpts = {}):
   // on assertions, not at creation time.
   if (!first) {
     const handle = await getPasskeyPrfOutput({ rpId, credentialId });
-    return prfOutputToAccount(handle.prfOutput, { credentialId, rpId });
+    return await prfOutputToAccount(handle.prfOutput, { credentialId, rpId });
   }
   const prfOutput = new Uint8Array(first);
   if (prfOutput.length !== 32) {
     throw new MeraError("PRF_UNAVAILABLE", MERA_PRF_REMEDIATION);
   }
-  return prfOutputToAccount(prfOutput, { credentialId, rpId });
+  return await prfOutputToAccount(prfOutput, { credentialId, rpId });
 }
 
 /* ───────────────────────── one passkey, many keys ──────────────────────── */
@@ -724,7 +724,7 @@ export function deriveManyKeys(
       "passkey.prfOutput must be 32 bytes (obtained from a PRF ceremony in the browser)",
     );
   }
-  const { mnemonic, seed } = prfOutputToSeed(prfOutput);
+  const mnemonic = prfOutputToMnemonic(prfOutput);
   const keys: MeraDerivedKey[] = [];
   for (let index = 0; index < count; index++) {
     const account = seedToEoa(mnemonic, index);

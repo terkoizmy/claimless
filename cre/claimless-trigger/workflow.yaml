@@ -1,0 +1,11 @@
+# Claimless trigger workflow — workflow-specific settings.
+#
+# Artifacts are written to the workflow directory by `cre workflow build`.
+
+staging-settings:
+  workflow-name: claimless-trigger-staging
+  deployment-registry: private
+
+production-settings:
+  workflow-name: claimless-trigger
+  deployment-registry: private

@@ -1,0 +1,17 @@
+{
+  "name": "claimless-trigger",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build main.ts --target=esnext --outfile=dist/main.js",
+    "simulate:staging": "cre workflow simulate claimless-trigger --target staging-settings",
+    "simulate:production": "cre workflow simulate claimless-trigger --target production-settings"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,18 @@
+# Chainlink CRE project configuration.
+#
+# Targets are named sets of settings. Switching target switches RPC URLs and
+# other environment-specific values in one step (see CRE docs: "Project
+# Configuration"). The workflow selects a target with `--target <name>`.
+#
+# Chain name must be one CRE recognises. Monad testnet is supported from
+# CRE CLI v1.30.0+; this machine has v1.34.0.
+
+staging-settings:
+  rpcs:
+    - chain-name: monad-testnet
+      url: https://testnet-rpc.monad.xyz
+
+production-settings:
+  rpcs:
+    - chain-name: monad-mainnet
+      url: https://rpc.monad.xyz
