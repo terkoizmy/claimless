@@ -281,7 +281,7 @@ interface IReputationRegistry {
                           bytes32 feedbackHash) external;
     function getSummary(uint256 agentId, address[] calldata clients,
                         string calldata tag1, string calldata tag2)
-        external view returns (uint256 count, int128 summaryValue, uint8 summaryValueDecimals);
+        external view returns (uint64 count, int128 summaryValue, uint8 summaryValueDecimals);
 }
 
 // Claimless functions
@@ -295,6 +295,7 @@ function getAgentRisk(uint256 agentId) external view returns (int128 score, uint
 - `tag1` should be a fixed taxonomy string, e.g. `"claimless:incident"`, so consumers can filter.
 - Push a **summary**, not raw events, into Reputation. Rich data stays in `IncidentRegistry`.
 - Make registry addresses configurable per network; do **not** hardcode.
+- Interfaces are hand-written in `contracts/src/interfaces/` from the **official upstream ABIs** saved in `contracts/abis/`. Do not guess signatures. (Corrected: `getSummary` returns `uint64 count`, not `uint256`.)
 
 **Addresses (VERIFIED on-chain):**
 
