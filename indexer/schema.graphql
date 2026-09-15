@@ -1,0 +1,81 @@
+# Claimless indexer schema.
+# Entities: Agent, Incident, Challenge, ScoreSnapshot.
+# Derived fields (per-agent counts / severity sums) let the dashboard and SDK
+# read aggregates straight from GraphQL without on-chain calls.
+
+enum IncidentStatus {
+  PENDING # reported, challenge window open
+  CHALLENGED # under active challenge
+  ACCEPTED # unchallenged past the window, or challenge resolved in its favour
+  REJECTED # challenge resolved against it
+}
+
+# One row per ERC-8004 agent id, mirroring RiskScore's per-agent aggregates
+# (getAcceptedCount / getAcceptedSeveritySum / getScore) as derived fields.
+type Agent {
+  id: ID! # ERC-8004 agent id (uint256, stringified)
+  firstSeenAt: Timestamp!
+  lastActiveAt: Timestamp!
+  # Derived per-agent counts and sums (dashboard reads these directly):
+  incidentCount: Int! # all incidents ever reported for this agent
+  acceptedCount: Int! # incidents whose report stands
+  rejectedCount: Int! # incidents rejected after challenge
+  pendingCount: Int! # incidents still pending or under challenge
+  severitySum: BigInt! # sum of severity over ACCEPTED incidents
+  avgSeverity: Float! # severitySum / acceptedCount (0 when none)
+  currentScore: BigInt! # last known risk score from RiskScore (0 if never scored)
+  incidents: [Incident!]! @derivedFrom(field: "agent")
+  scores: [ScoreSnapshot!]! @derivedFrom(field: "agent")
+}
+
+# One row per incident report. Lifecycle mirrors ClaimlessTypes.IncidentStatus.
+type Incident {
+  id: ID! # global incident id (uint256, stringified)
+  agent: Agent!
+  agentId: BigInt! # denormalized for cheap filtering/sorting
+  kind: Bytes! # bytes32 failure taxonomy hash, e.g. keccak256("SLA_BREACH")
+  severity: Int! # 1..5
+  # NOTE: evidenceHash is a reportIncident() argument, NOT part of the
+  # IncidentReported event, so it is not indexable from logs. Keep this field
+  # off the entity; the payload hash stays off-chain per contract design.
+  reporter: String! # staked reporter address
+  # The IncidentReported event carries no stake field and msg.value is not part
+  # of the event object, so the bond is not recoverable from logs alone.
+  # Populated 0 until tx.value capture is verified/enabled (see handler TODO).
+  stake: BigInt!
+  reportedAt: BigInt! # block timestamp of IncidentReported
+  challengeDeadline: BigInt! # reportedAt + CHALLENGE_WINDOW (3 days)
+  challenger: String # zero-address string if unchallenged
+  # Same limitation as stake: IncidentChallenged carries no bond amount.
+  challengeStake: BigInt! # 0 until tx.value capture is verified/enabled
+  status: IncidentStatus!
+  finalizedAt: BigInt # block timestamp of IncidentFinalized (null until final)
+  txHash: String! # transaction hash of the report
+  blockNumber: BigInt!
+  challenges: [Challenge!]! @derivedFrom(field: "incident")
+}
+
+# One row per challenge event (a report can in principle be challenged at
+# most once on-chain, but the entity keeps the full duel record).
+type Challenge {
+  id: ID! # "<incidentId>" (one active challenge per incident)
+  incident: Incident!
+  incidentId: BigInt! # denormalized for cheap filtering
+  challenger: String!
+  challengeStake: BigInt!
+  resolved: Boolean!
+  reportStands: Boolean # null until ChallengeResolved
+  winner: String # reporter or challenger; null until resolved
+  resolvedAt: BigInt # block timestamp of ChallengeResolved
+}
+
+# Immutable history of RiskScore computations, one row per ScoreUpdated event.
+type ScoreSnapshot {
+  id: ID! # "<agentId>-<logIndex>-<blockNumber>"
+  agent: Agent!
+  agentId: BigInt! # denormalized for cheap filtering
+  oldScore: BigInt!
+  newScore: BigInt!
+  timestamp: BigInt! # block timestamp of the ScoreUpdated event
+  blockNumber: BigInt!
+}
