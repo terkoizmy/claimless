@@ -4,6 +4,7 @@
 > **This document is a handoff for a new session.** Read this before starting.
 > Submission deadline: **Oct 14, 2026, 03:59 UTC** · Remaining: **28 days**
 > Repo: `C:\Users\terkoiz\Documents\hackathon\claimless` (separate from the `idea` docs folder)
+> **New session? Read `AGENTS.md` first**, then section 0 and section 9 of this file.
 
 ---
 
