@@ -6,7 +6,7 @@
   "scoreThreshold": 80,
   "//minAcceptedIncidents": "Guard against paying out on an agent with an empty record.",
   "minAcceptedIncidents": 1,
-  "incidentRegistry": "0xF856AC417597eb1aD952CEeb963FD51B1D2789cF",
-  "riskScore": "0xF61B247543D0719c74D222057E3dd49F863f87f9",
+  "incidentRegistry": "0xfE23A58f08bCd245ee61cb08dE1d27d2c27c5944",
+  "riskScore": "0x5cFA4968a9225fd5bCAbF88B6A35A9748E6215F4",
   "chainName": "monad-testnet"
 }

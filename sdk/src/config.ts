@@ -21,12 +21,17 @@ export const ERC8004 = {
 
 /**
  * Claimless contracts, deployed and source-verified on Monad testnet.
+ * These mirror `contracts/deployments/monad-testnet.json` (the single source of
+ * truth written by script/Deploy.s.sol). If contracts are redeployed, update
+ * that file first, then re-copy the values here.
  * Verify live with: `cast code <address> --rpc-url https://testnet-rpc.monad.xyz`
  */
 export const CLAIMLESS_TESTNET = {
-  incidentRegistry: "0xF856AC417597eb1aD952CEeb963FD51B1D2789cF",
-  riskScore: "0xF61B247543D0719c74D222057E3dd49F863f87f9",
-  agentIdentity: "0x7eFC535445E323fC50BF652D3fc42332057Ae703",
+  incidentRegistry: "0xfE23A58f08bCd245ee61cb08dE1d27d2c27c5944",
+  riskScore: "0x5cFA4968a9225fd5bCAbF88B6A35A9748E6215F4",
+  agentIdentity: "0x6a075C7A2ebcB43F4E08FEd922AaF058437fa4dA",
+  coverPool: "0x93634116bDDfeE1098491c839DDDfd7BaA8b7f30",
+  parametricTrigger: "0xC5F875721E60C3198dA99Aaa639914e64fb15D12",
 } as const;
 
 /** Monad testnet USDC (Circle). Re-verify bytecode; testnet resets happen. */
