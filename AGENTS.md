@@ -9,7 +9,7 @@
 3. **`docs/AURORA_INTENTS_IMPLEMENTATION.md`** — everything about the Aurora Intents integration, including verified facts about testnet, minimums, gas, and funding. Read sections 12-15 before writing any Intents code.
 4. **`docs/`** — supporting research: `BOUNTY_STRATEGY.md`, `SPONSOR_FEASIBILITY.md`, `CLAIMLESS_DEEPDIVE.md`, `WALLET_DECISION.md`.
 
-## 2. Current state
+## 2. Current state (updated 2026-09-21)
 
 | Item | Status |
 |---|---|
@@ -19,7 +19,52 @@
 | Deadline | **Oct 14, 2026, 03:59 UTC** |
 | Bounty target | **$26,500** (Aurora Intents $5k, Privy $5k, Nansen $5k, MetaMask Agent Wallet Plugin $2.5k, Mera ×2 $5k, CRE $3k, Envio $1k) |
 | Core components | `IncidentRegistry` · `RiskScore` · `AgentIdentity` (ERC-8004 adapter) · `CoverPool` · `ParametricTrigger` |
-| Docs | `PLAN.md`, `IDEA.md`, `docs/` (7 research docs incl. `ERC8004_COLDSTART_FINDINGS.md`, `INCENTIVE_MECHANISM_DESIGN.md`, `COLDSTART_DISTRIBUTION_STRATEGY.md`, `METAMASK_AGENT_WALLET_PLUGIN.md`) |
+
+**All five contracts are deployed and live on Monad testnet (10143).** The canonical
+addresses are in `contracts/deployments/monad-testnet.json` (single source of truth; the
+SDK, CRE config, indexer env, and web dashboard all mirror it):
+
+| Contract | Address |
+|---|---|
+| IncidentRegistry | `0xfE23A58f08bCd245ee61cb08dE1d27d2c27c5944` |
+| RiskScore | `0x5cFA4968a9225fd5bCAbF88B6A35A9748E6215F4` |
+| AgentIdentity | `0x6a075C7A2ebcB43F4E08FEd922AaF058437fa4dA` |
+| CoverPool | `0x93634116bDDfeE1098491c839DDDfd7BaA8b7f30` |
+| ParametricTrigger | `0xC5F875721E60C3198dA99Aaa639914e64fb15D12` |
+
+> **Important:** the Sep 21 redeploy created this set; the pre-redeploy addresses
+> (`0xF856...`, `0xF61B...`, `0x7eFC...`) are stale. Do not reintroduce them.
+
+### What runs today (all verified)
+
+| Command | Result |
+|---|---|
+| `cd contracts && forge test` | 93/93 pass |
+| `cd sdk && npm run verify` | 5/5 pass (contract + indexer agree, ERC-8004, Aurora dry quote) |
+| `cd sdk && npm run seed:demo` | idempotent demo-state seed (see below) |
+| `cd mcp && npm run smoke` | live stdio session, 4 tools, real reads |
+| `cd mm-plugin && npm test` | 24/24 pass |
+| `cd web && npm run build` | clean; `npm run dev` serves the dashboard |
+
+### Demo state (restored by `sdk/scripts/seed-demo.ts`)
+
+- **10182** — accepted SLA_BREACH (severity 4) → score **87** → normal terms (1.5x, 0.4 MON cap).
+  Policy + trigger registered; the trigger is left **armed** so the payout can be fired live.
+- **1867** — clean (score 100), canonical ERC-8004 identity, published Claimless summary.
+- **77001** — PENDING incident → correctly priced **SILENT** (pending is not a record).
+
+The indexer must be running for `verify` checks 1-2 and the dashboard:
+`cd indexer && docker compose up -d`.
+
+### Remaining before submission
+
+| Item | Status |
+|---|---|
+| Demo video (2-3 min) | ❌ not recorded (Week 3 gate) |
+| Mera real-passkey check | 🟡 needs ~2 min in Chrome (`mera.category.xyz/demo`) |
+| MetaMask plugin end-to-end | 🟡 built + unit-tested; `mm` CLI not installed, no live run |
+| LangChain/Vercel adapters | 🟡 in progress (`integrations/langchain/`) |
+| `docs/DEMO_SCRIPT.md`, `docs/SPONSOR_FEEDBACK.md` | 🟡 in progress |
 
 ## 3. Environment status (verified 2026-09-15)
 
@@ -27,7 +72,7 @@
 |---|---|---|
 | git | 2.54.0.windows.1 | ✅ ready |
 | node | v24.16.0 | ✅ ready (Envio needs v22+) |
-| docker | 29.5.2 | ✅ ready |
+| docker | 29.5.2 | ✅ ready (indexer stack runs) |
 | **Foundry** | **1.8.3** | ✅ **installed** at `%USERPROFILE%\.foundry\bin` (added to user PATH) |
 
 Foundry was installed from the official Windows release (`foundry_v1.8.3_win32_amd64.zip`, sha256 verified). `forge`, `cast`, `anvil`, `chisel` all work. A smoke test (`forge init` + `forge build`) compiled successfully.
