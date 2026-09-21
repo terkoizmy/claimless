@@ -36,6 +36,10 @@ contract ParametricTriggerTest is Test {
         score = new RiskScore(address(registry));
         pool = new CoverPool(address(registry), address(score));
         trigger = new ParametricTrigger(address(pool), address(score), address(registry), forwarder);
+        // The pool only lets the authorised orchestrator execute a payout, so the
+        // trigger must be wired before any payout can happen (as the deploy script
+        // does).
+        pool.setTrigger(address(trigger));
 
         vm.deal(underwriter, 1000 ether);
         vm.deal(buyer, 1000 ether);

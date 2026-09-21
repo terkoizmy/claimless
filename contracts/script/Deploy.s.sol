@@ -65,6 +65,10 @@ contract Deploy is Script {
         ParametricTrigger trigger =
             new ParametricTrigger(address(pool), address(risk), address(registry), CRE_FORWARDER);
 
+        // Authorise the trigger as the only address allowed to execute a payout.
+        // The pool is deployed first, so this link must be made after both exist.
+        pool.setTrigger(address(trigger));
+
         vm.stopBroadcast();
 
         console.log("IncidentRegistry:", address(registry));

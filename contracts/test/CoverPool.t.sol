@@ -228,6 +228,7 @@ contract CoverPoolTest is Test {
         (uint256 policyId, , uint256 maxCoverage) = _buyMaxCoverage(AGENT_SILENT, buyer);
 
         uint256 before = buyer.balance;
+        vm.prank(address(pool.trigger()));
         pool.executePayout(policyId);
 
         assertEq(buyer.balance, before + maxCoverage, "buyer received the coverage amount");
@@ -239,9 +240,49 @@ contract CoverPoolTest is Test {
     function test_PayoutTwiceReverts() public {
         (uint256 policyId, , ) = _buyMaxCoverage(AGENT_SILENT, buyer);
 
+        vm.prank(address(pool.trigger()));
         pool.executePayout(policyId);
+        vm.prank(address(pool.trigger()));
         vm.expectRevert(CoverPool.PolicyNotActive.selector);
         pool.executePayout(policyId);
+    }
+
+    /// @dev Security regression: a payout may only be executed by the authorised
+    ///      orchestrator. Without this gate, anyone could drain an active policy,
+    ///      bypassing the parametric condition entirely. This is the whole point
+    ///      of "who pays is gated; whether to pay is not".
+    function test_ExecutePayout_OnlyTriggerCanCall() public {
+        (uint256 policyId, , ) = _buyMaxCoverage(AGENT_SILENT, buyer);
+
+        vm.prank(address(0xDEADBEEF));
+        vm.expectRevert(CoverPool.NotTriggerAuthorised.selector);
+        pool.executePayout(policyId);
+
+        assertTrue(pool.getPolicy(policyId).active, "unauthorised call must not pay out");
+        assertEq(pool.lockedCapital(), 0 + pool.getPolicy(policyId).amount, "capital still locked");
+    }
+
+    /// @dev The trigger slot can be set exactly once, by the owner only.
+    function test_SetTrigger_OnceAndOwnerOnly() public {
+        assertEq(pool.trigger(), address(0), "no trigger before wiring");
+
+        // Non-owner cannot wire it.
+        vm.prank(address(0xBAD));
+        vm.expectRevert(CoverPool.NotOwner.selector);
+        pool.setTrigger(address(0x1234));
+
+        // Owner wires it; the pool's deployer is this test contract.
+        pool.setTrigger(address(0x1234));
+        assertEq(pool.trigger(), address(0x1234));
+
+        // A second wiring attempt is refused, so the payout path cannot be repointed.
+        vm.expectRevert(CoverPool.AlreadyConfigured.selector);
+        pool.setTrigger(address(0x5678));
+
+        // Zero address is rejected when a trigger has not yet been set.
+        CoverPool fresh = new CoverPool(address(registry), address(score));
+        vm.expectRevert(CoverPool.ZeroAddress.selector);
+        fresh.setTrigger(address(0));
     }
 
     /// @dev The thesis, asserted structurally: there is no per-claim approval
@@ -251,8 +292,14 @@ contract CoverPoolTest is Test {
     function test_PayoutNeedsNoApprovalStep() public {
         (uint256 policyId, , ) = _buyMaxCoverage(AGENT_SILENT, buyer);
 
-        // One call, no vote, no committee, no admin. Anyone may trigger it.
-        vm.prank(address(0xDEADBEEF));
+        // The authorised orchestrator pays in one call: no vote, no committee,
+        // no per-claim approval. The trigger contract decides via its on-chain
+        // condition; this test wires a stand-in trigger and checks that the
+        // payer needs no additional permission.
+        address standInTrigger = address(0x7A1);
+        pool.setTrigger(standInTrigger);
+
+        vm.prank(standInTrigger);
         pool.executePayout(policyId);
 
         assertFalse(pool.getPolicy(policyId).active, "payout completed with no approval step");

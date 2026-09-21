@@ -77,6 +77,15 @@ contract CoverPool {
     /// @notice The score used to price a policy.
     RiskScore public immutable riskScore;
 
+    /// @notice Deployer. May authorise the payout orchestrator exactly once.
+    address public owner;
+
+    /// @notice The only address allowed to execute a payout: the orchestrator
+    ///         (ParametricTrigger, driven by Chainlink CRE). Set once by the
+    ///         owner after both contracts exist, because the pool is deployed
+    ///         before the trigger.
+    address public trigger;
+
     /// @notice Total underwriter capital currently available to back policies.
     uint256 public totalCapital;
 
@@ -124,6 +133,8 @@ contract CoverPool {
     ///         insufficient capacity). Never for a missing risk record.
     event CoverRefused(uint256 indexed agentId, address indexed buyer, bytes32 reason);
     event PayoutExecuted(uint256 indexed policyId, uint256 indexed agentId, uint256 amount);
+    /// @notice Emitted once when the owner authorises the payout orchestrator.
+    event TriggerAuthorised(address indexed trigger);
 
     // ------------------------------- errors -------------------------------
 
@@ -138,6 +149,8 @@ contract CoverPool {
     error PolicyNotActive();
     error PolicyNotFound(uint256 policyId);
     error NotTriggerAuthorised();
+    error NotOwner();
+    error AlreadyConfigured();
 
     /// @param registry_ Staked incident registry (determines "has a record").
     /// @param riskScore_ The deterministic score contract.
@@ -145,6 +158,18 @@ contract CoverPool {
         if (registry_ == address(0) || riskScore_ == address(0)) revert ZeroAddress();
         registry = IIncidentRegistry(registry_);
         riskScore = RiskScore(riskScore_);
+        owner = msg.sender;
+    }
+
+    /// @notice Authorise the payout orchestrator. Owner-only, and only once, so
+    ///         the payout path cannot later be repointed at a new contract.
+    /// @dev Called after ParametricTrigger is deployed (the pool exists first).
+    function setTrigger(address trigger_) external {
+        if (msg.sender != owner) revert NotOwner();
+        if (trigger != address(0)) revert AlreadyConfigured();
+        if (trigger_ == address(0)) revert ZeroAddress();
+        trigger = trigger_;
+        emit TriggerAuthorised(trigger_);
     }
 
     // ----------------------------- underwriting ---------------------------
@@ -279,12 +304,16 @@ contract CoverPool {
 
     // ------------------------------- payout -------------------------------
 
-    /// @notice Execute a payout. Called by the orchestrator (Chainlink CRE in
-    ///         the deployed flow), never by a claim or a vote.
+    /// @notice Execute a payout. Called only by the authorised orchestrator
+    ///         (ParametricTrigger, driven by Chainlink CRE), never by a claim or
+    ///         a vote.
     /// @dev There is no `approve`/`vote`/`resolve` step anywhere in this
     ///      contract. That omission is the point: it is the mistake that killed
     ///      InsurAce and Cover Protocol and that Nexus Mutual retreated from.
+    ///      The gate here is *who may call*, not *whether to pay*: the decision
+    ///      is made by the trigger's on-chain condition.
     function executePayout(uint256 policyId) external returns (uint256 paid) {
+        if (msg.sender != trigger) revert NotTriggerAuthorised();
         Policy storage p = _policies[policyId];
         if (!p.active) revert PolicyNotActive();
 
