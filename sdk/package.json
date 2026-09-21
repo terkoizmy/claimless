@@ -32,7 +32,8 @@
     "verify": "tsx scripts/verify.ts",
     "privy:demo": "tsx --env-file=../.env scripts/privy-demo.ts",
     "intents:demo": "tsx scripts/intents-demo.ts",
-    "report": "tsx scripts/report.ts"
+    "report": "tsx scripts/report.ts",
+    "seed:demo": "tsx --env-file=../.env scripts/seed-demo.ts"
   },
   "dependencies": {
     "@scure/bip32": "^1.7.0",
