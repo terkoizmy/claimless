@@ -1,5 +1,10 @@
-node_modules/ 
+﻿node_modules/ 
 dist/ 
 .env 
 "*.log" 
 artifacts/
+
+# Transient artifacts written by `cre workflow compile` / `simulate`.
+# The CLI creates these next to the workflow entry file and leaves them behind.
+.cre_build_tmp.js
+.cre_build_tmp.wasm

@@ -120,20 +120,56 @@ cre account access   # request deploy access
 ```
 Plus the simulation and lifecycle commands: build, simulate, deploy, activate, pause, update, delete, monitor.
 
-## 6. Monad support — partial evidence, must be verified at build time
+## 6. Monad support — RESOLVED: fully supported ✅
 
-This is the one **uncertain** point, and I will not overstate it.
+Previously uncertain. Now **verified directly** with `cre workflow supported-chains` (run 2026-09-21, authenticated):
 
-| Evidence | Status |
+```
+CHAIN            SELECTOR              FORWARDER ADDRESS                           MOCK FORWARDER ADDRESS
+monad-testnet    2183018362218727504   0xF8344CFd5c43616a4366C34E3EEE75af79a74482  0xB9F79d863261869B234c481D1f9A7af84AeAd192
+monad-mainnet    8481857512324358265   0x76c9cf548b4179F8901cda1f8623568b58215E62  0x9eF6468C5f37b976E57d52054c693269479A784d
+```
+
+**Both Monad testnet and Monad mainnet are supported**, with real forwarder addresses. No workaround needed.
+
+This resolves the last open risk in the CRE plan. The earlier `NOT FOUND` was because Monad does not appear in the public docs index, but it **is** present in the tenant-scoped chain registry the CLI reads.
+
+**Forwarder address to use (testnet):** `0xF8344CFd5c43616a4366C34E3EEE75af79a74482`
+This is what `ParametricTrigger` must trust as the report signer.
+
+### 6.1 Simulation result (VERIFIED)
+
+First successful simulation, 2026-09-21:
+
+```
+✓ Workflow compiled
+[SIMULATION] Running trigger trigger=cron-trigger@1.0.0
+[USER LOG] [claimless] agent=10182 score=87 accepted=1 breach=false
+✓ Workflow Simulation Result:
+{ "acceptedIncidents": 1, "agentId": 10182, "breach": false,
+  "decision": "OK: score 87 > 80; no payout", "score": 87, "scoreThreshold": 80 }
+```
+
+The values were **independently cross-checked** with a direct `eth_call` to Monad testnet:
+
+| Source | score | accepted |
+|---|---|---|
+| CRE simulation | 87 | 1 |
+| Direct RPC `eth_call` | **87** | **1** |
+
+They match. The workflow genuinely reads live contract state on Monad testnet.
+
+### 6.2 Corrections learned the hard way
+
+| Assumption | Reality |
 |---|---|
-| CRE's EVM Read/Write targets "**any EVM-compatible blockchain**" | ✅ VERIFIED (docs wording) |
-| Chain targeting uses **Chainlink's chain selector system** | ✅ VERIFIED (docs wording) |
-| **Monad testnet has a Chainlink chain selector: `2183018362218727504`** | ✅ VERIFIED (CCIP directory) |
-| Monad listed explicitly in CRE's own supported-chain list | ❌ **NOT FOUND** — no `monad` appears in `docs.chain.link` index |
+| "Simulation needs no account" | ❌ **False.** `cre workflow simulate` requires `cre login`. Only *building* is account-free. |
+| "`CRE_API_KEY` is not needed" | ⚠️ **Half true.** Interactive use needs `cre login`; headless/CI needs `CRE_API_KEY`. |
+| `workflow.yaml` flat keys | ❌ Must nest under `user-workflow:` and `workflow-artifacts:`, and `config-path` is **required**. |
+| Hand-rolled keccak selectors | ❌ Use viem's `parseAbi` + `encodeFunctionData` + `decodeFunctionResult`. |
+| `NodeRuntime` for contract reads | ❌ `callContract` takes `Runtime`; CRE handles consensus internally. |
+| `cron.handler(...)` | ❌ Use the exported `handler(...)`. |
 
-**Honest reading:** Monad has a Chainlink chain selector, which is the mechanism CRE uses to target chains, so support is *likely*. But there is no explicit CRE-and-Monad page, so **we must confirm it during Day 2 setup** by testing a simulation that reads from Monad testnet RPC.
-
-**Fallback if Monad is not yet supported by CRE's EVM capability:** simulate the workflow against **Sepolia** (CRE's documented target) and demonstrate the Monad write path with a direct script. The bounty asks for a CRE workflow, not a specific chain, and simulating on Sepolia with a documented path to Monad is honest and complete.
 
 ## 7. What our workflow will do
 

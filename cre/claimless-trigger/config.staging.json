@@ -1,0 +1,12 @@
+{
+  "//": "Claimless trigger workflow config — staging (Monad testnet).",
+  "//agentId": "Agent under observation. 10182 has real accepted-incident history on Monad testnet.",
+  "agentId": 10182,
+  "//scoreThreshold": "Payout condition: risk score at or below this value is a breach.",
+  "scoreThreshold": 80,
+  "//minAcceptedIncidents": "Guard against paying out on an agent with an empty record.",
+  "minAcceptedIncidents": 1,
+  "incidentRegistry": "0xF856AC417597eb1aD952CEeb963FD51B1D2789cF",
+  "riskScore": "0xF61B247543D0719c74D222057E3dd49F863f87f9",
+  "chainName": "monad-testnet"
+}

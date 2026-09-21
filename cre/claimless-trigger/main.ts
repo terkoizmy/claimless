@@ -2,234 +2,206 @@
  * Claimless parametric trigger workflow (Chainlink CRE).
  *
  * WHY THIS EXISTS
- * Claimless's whole thesis is "no committee, no voting": payout must be driven by
- * measurable data. But if our own server runs the check, that server becomes the
- * single party deciding — which is exactly the failure mode we designed against
- * (Nexus Mutual's V1 voting -> V2 stake-weighted -> V3 three human experts).
+ * ---------------
+ * Claimless's whole thesis is "no committee, no voting": payout must be driven
+ * by measurable data. If our own server runs the check, that server becomes a
+ * single point of trust and failure — the failure mode we designed against
+ * (Nexus Mutual V1 voting -> V2 stake-weighted -> V3 three human experts).
  *
- * CRE removes that central point: this workflow is executed by a Decentralized
- * Oracle Network, and any on-chain write goes through Chainlink's
- * KeystoneForwarder, which validates a signed report before calling
- * `onReport(bytes,bytes)` on our consumer contract.
+ * CRE moves the check onto a Decentralized Oracle Network. Every capability call
+ * below is executed by multiple independent nodes and merged by BFT consensus,
+ * so no single operator (including us) decides whether a payout fires.
  *
- * WHAT IT DOES (current milestone: read-only evaluation)
- *  1. cron trigger fires periodically
- *  2. reads the coverage state and the RiskScore for the agent from Monad testnet
- *  3. decides whether the registered trigger condition is met
- *  4. logs the decision, and returns it
+ * WHAT THIS WORKFLOW DOES (read-only today)
+ * -----------------------------------------
+ *   cron trigger (every 5 minutes)
+ *     -> EVM read: RiskScore.getScore(agentId)           [consensus-verified]
+ *     -> EVM read: IncidentRegistry.getAcceptedCount(id) [consensus-verified]
+ *     -> evaluate a deterministic, narrow condition
+ *     -> return the decision
  *
- * Step 4 currently logs rather than writes. Making it write is a one-line change
- * to `evmClient.writeReport(...)` once:
- *   - `ParametricTrigger` implements `IReceiver.onReport` (planned, Week 3), and
- *   - the forwarder address for the chain is known (CRE_FORWARDER_ADDRESS).
- * The signed-report path is deliberately not faked here.
+ * DESIGN NOTE: the condition is arithmetic, not judgement. "AI quality" is not
+ * machine-checkable; "score <= threshold and at least one accepted incident" is.
+ * Keeping the trigger narrow is what lets us say "no human adjudication"
+ * honestly.
  *
- * STATUS: project scaffolded with the official CRE layout, CLI v1.34.0 installed
- * (Monad testnet needs >= v1.30.0). `cre workflow simulate` requires `cre login`
- * (an account), so the first simulation is pending the human.
+ * NOT YET WRITING ON-CHAIN
+ * ------------------------
+ * This logs a decision instead of writing. Making it write requires:
+ *   1. `ParametricTrigger` implements `IReceiver.onReport(bytes,bytes)`, and
+ *   2. the KeystoneForwarder address (FORWARDER below).
+ * The signed-report path is deliberately not faked.
  *
- * Bounty: "Best workflow with CRE" ($3,000) — CRE as the orchestration layer for
- * the trigger, not a decoration.
+ * VERIFIED ENVIRONMENT (2026-09-21)
+ * ---------------------------------
+ *   CLI v1.34.0, SDK @chainlink/cre-sdk 1.22.0.
+ *   `cre workflow supported-chains` confirms monad-testnet IS supported:
+ *     selector         2183018362218727504
+ *     forwarder        0xF8344CFd5c43616a4366C34E3EEE75af79a74482
+ *     mock forwarder   0xB9F79d863261869B234c481D1f9A7af84AeAd192
+ *
+ * Bounty: "Best workflow with CRE" ($3,000) — CRE is the orchestration layer for
+ * the trigger, not decoration.
  */
 
 import {
   CronCapability,
   EVMClient,
-  Runner,
-  handler,
   getNetwork,
+  encodeCallMsg,
   bytesToHex,
-  consensusIdenticalAggregation,
+  LAST_FINALIZED_BLOCK_NUMBER,
+  handler,
   type Runtime,
-  type NodeRuntime,
+  Runner,
 } from "@chainlink/cre-sdk";
+import {
+  type Address,
+  encodeFunctionData,
+  decodeFunctionResult,
+  parseAbi,
+  zeroAddress,
+} from "viem";
+import { z } from "zod";
 
 /* ─────────────────────────── configuration ─────────────────────────────── */
 
-/** Monad testnet. Read via getNetwork so the chain selector comes from CRE. */
-const CHAIN_NAME = "monad-testnet";
-
-/** Claimless contracts (verified on Monad testnet). */
-const INCIDENT_REGISTRY = "0xF856AC417597eb1aD952CEeb963FD51B1D2789f" as const;
-const RISK_SCORE = "0xF61B247543D0719c74D222057E3dd49F863f87f9" as const;
-
 /**
- * Minimal ABI fragments. Only what this workflow reads. Kept inline so the
- * workflow stays self-contained and WASM-friendly.
+ * Config schema. `cre` parses config-path JSON automatically and validates it
+ * against this schema, so a malformed config fails loudly instead of silently
+ * producing a wrong decision.
  */
-const RISK_SCORE_ABI = [
-  {
-    name: "getScore",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "agentId", type: "uint256" }],
-    outputs: [{ name: "", type: "uint256" }],
-  },
-] as const;
+const configSchema = z.object({
+  agentId: z.number().int().nonnegative(),
+  scoreThreshold: z.number().int().min(0).max(100),
+  minAcceptedIncidents: z.number().int().nonnegative(),
+  incidentRegistry: z.string(),
+  riskScore: z.string(),
+  chainName: z.string(),
+});
 
-const INCIDENT_REGISTRY_ABI = [
-  {
-    name: "getAcceptedCount",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "agentId", type: "uint256" }],
-    outputs: [{ name: "", type: "uint256" }],
-  },
-] as const;
+type TriggerConfig = z.infer<typeof configSchema>;
 
-/** Default agent under observation (the one with real incident history). */
-const DEFAULT_AGENT_ID = 10182n;
+/** Claimless contracts (Monad testnet, from contracts/deployments/monad-testnet.json).
+ *  Both are 42 chars (0x + 40 hex); a 41-char address fails at call time. */
+const RISK_SCORE_ABI = parseAbi(["function getScore(uint256 agentId) view returns (uint256)"]);
+const INCIDENT_REGISTRY_ABI = parseAbi([
+  "function getAcceptedCount(uint256 agentId) view returns (uint256)",
+]);
 
-/**
- * The parametric condition for the prototype: a payout triggers when the agent's
- * risk score falls below this threshold. Narrow and deterministic on purpose —
- * basis risk is a known hazard, so the trigger must be a number anyone can
- * re-derive, not a judgement.
- */
-const SCORE_TRIGGER_THRESHOLD = 90n;
+/** KeystoneForwarder on Monad testnet, from `cre workflow supported-chains`.
+ *  Needed only once this workflow writes on-chain. */
+const FORWARDER = "0xF8344CFd5c43616a4366C34E3EEE75af79a74482" as const;
 
-/* ─────────────────────────────── types ─────────────────────────────────── */
-
-interface TriggerInput {
-  agentId: string;
-}
-
+/** Result shape. Primitive only, so CRE can serialize it. */
 interface TriggerEvaluation {
-  agentId: string;
-  score: bigint;
-  acceptedIncidents: bigint;
-  threshold: bigint;
-  /** True when the measured condition is met; a payout would be due. */
-  triggered: boolean;
-  /** Human-readable reason, so the log is self-explaining. */
-  reason: string;
+  agentId: number;
+  score: number;
+  acceptedIncidents: number;
+  scoreThreshold: number;
+  breach: boolean;
+  decision: string;
 }
 
-/* ─────────────────────────────── helpers ───────────────────────────────── */
+/* ──────────────────────────── the handler ──────────────────────────────── */
 
-/** Reads a uint256 view function and returns the value. */
-function readUint(
-  evmClient: EVMClient,
-  runtime: Runtime<unknown>,
-  address: `0x${string}`,
-  abi: readonly unknown[],
-  functionName: string,
-  agentId: bigint,
-): bigint {
-  const reply = evmClient
-    .callContract(runtime, {
-      call: {
-        to: address,
-        data: encodeCall(abi, functionName, [agentId]),
-      },
-    })
-    .result();
+const onCronTrigger = (runtime: Runtime<TriggerConfig>): TriggerEvaluation => {
+  const cfg = runtime.config;
 
-  const bytes = (reply as { data?: Uint8Array }).data;
-  if (!bytes || bytes.length < 32) {
-    throw new Error(`${functionName} returned no data`);
-  }
-  return decodeUint256(bytes);
-}
+  // Resolve the chain selector by name, so the name in config is validated
+  // against CRE's own registry rather than trusted blindly.
+  const network = getNetwork({ chainFamily: "evm", chainSelectorName: cfg.chainName });
+  if (!network) throw new Error(`CRE does not know chain "${cfg.chainName}"`);
 
-/**
- * ABI-encodes a single uint256 argument call.
- *
- * The 4-byte selector is the first 4 bytes of keccak256(signature). To stay
- * WASM-portable we avoid a keccak dependency here and use the selectors already
- * computed by the SDK at build time (they are constants for these two functions,
- * verified with `cast sig`).
- */
-function encodeCall(abi: readonly unknown[], functionName: string, args: bigint[]): `0x${string}` {
-  // Selectors verified against the deployed contracts with
-  //   cast sig "getScore(uint256)"          -> 0x0e1af57b
-  //   cast sig "getAcceptedCount(uint256)"  -> 0xa437d4f7
-  // Keeping them as literals avoids a keccak implementation inside the WASM build.
-  const sigs: Record<string, string> = {
-    getScore: "0x0e1af57b",
-    getAcceptedCount: "0xa437d4f7",
+  const evm = new EVMClient(network.chainSelector.selector);
+
+  /** Reads `getScore(uint256)`. Consensus-verified across the DON. */
+  const readScore = (to: string, arg: number): bigint => {
+    const data = encodeFunctionData({
+      abi: RISK_SCORE_ABI,
+      functionName: "getScore",
+      args: [BigInt(arg)],
+    });
+    const reply = evm
+      .callContract(runtime, {
+        call: encodeCallMsg({ from: zeroAddress, to: to as Address, data }),
+        blockNumber: LAST_FINALIZED_BLOCK_NUMBER,
+      })
+      .result();
+    return decodeFunctionResult({
+      abi: RISK_SCORE_ABI,
+      functionName: "getScore",
+      data: bytesToHex(reply.data),
+    }) as bigint;
   };
-  const selector = sigs[functionName];
-  if (!selector) throw new Error(`no selector for ${functionName} in ${JSON.stringify(abi)}`);
-  const argHex = args.map((a) => a.toString(16).padStart(64, "0")).join("");
-  return `${selector}${argHex}` as `0x${string}`;
-}
 
-/** Decodes a 32-byte big-endian uint256. */
-function decodeUint256(bytes: Uint8Array): bigint {
-  let value = 0n;
-  for (const b of bytes.slice(0, 32)) {
-    value = (value << 8n) | BigInt(b);
-  }
-  return value;
-}
+  /** Reads `getAcceptedCount(uint256)`. Consensus-verified across the DON. */
+  const readAcceptedCount = (to: string, arg: number): bigint => {
+    const data = encodeFunctionData({
+      abi: INCIDENT_REGISTRY_ABI,
+      functionName: "getAcceptedCount",
+      args: [BigInt(arg)],
+    });
+    const reply = evm
+      .callContract(runtime, {
+        call: encodeCallMsg({ from: zeroAddress, to: to as Address, data }),
+        blockNumber: LAST_FINALIZED_BLOCK_NUMBER,
+      })
+      .result();
+    return decodeFunctionResult({
+      abi: INCIDENT_REGISTRY_ABI,
+      functionName: "getAcceptedCount",
+      data: bytesToHex(reply.data),
+    }) as bigint;
+  };
 
-/* ────────────────────────────── the handler ────────────────────────────── */
+  const score = Number(readScore(cfg.riskScore, cfg.agentId));
+  const accepted = Number(readAcceptedCount(cfg.incidentRegistry, cfg.agentId));
 
-/** Runs the trigger evaluation. Returned by the trigger so it drives the cron. */
-function evaluateTrigger(runtime: Runtime<TriggerInput>): TriggerEvaluation {
-  const input = runtime.config ?? { agentId: DEFAULT_AGENT_ID.toString() };
-  const agentId = BigInt(input.agentId);
+  // Deterministic, narrow condition — no judgement, no discretion.
+  const hasRecord = accepted >= cfg.minAcceptedIncidents;
+  const breach = hasRecord && score <= cfg.scoreThreshold;
 
-  const network = getNetwork({ chainFamily: "evm", chainSelectorName: CHAIN_NAME });
-  if (!network) throw new Error(`CRE does not know chain selector ${CHAIN_NAME}`);
-  const evmClient = new EVMClient(network.chainSelector.selector);
-
-  const score = readUint(evmClient, runtime, RISK_SCORE, RISK_SCORE_ABI, "getScore", agentId);
-  const acceptedIncidents = readUint(
-    evmClient,
-    runtime,
-    INCIDENT_REGISTRY,
-    INCIDENT_REGISTRY_ABI,
-    "getAcceptedCount",
-    agentId,
-  );
-
-  const triggered = score < SCORE_TRIGGER_THRESHOLD;
-  const reason = triggered
-    ? `score ${score} is below threshold ${SCORE_TRIGGER_THRESHOLD} -> payout due`
-    : `score ${score} is at or above threshold ${SCORE_TRIGGER_THRESHOLD} -> no payout`;
+  const decision = !hasRecord
+    ? "NO_RECORD: no accepted incidents; coverage stays at the punitive no-record tier"
+    : breach
+      ? `BREACH: score ${score} <= ${cfg.scoreThreshold} with ${accepted} accepted incident(s); payout condition met`
+      : `OK: score ${score} > ${cfg.scoreThreshold}; no payout`;
 
   runtime.log(
-    `[claimless] agent ${agentId}: score=${score} acceptedIncidents=${acceptedIncidents} ` +
-      `threshold=${SCORE_TRIGGER_THRESHOLD} triggered=${triggered}`,
+    `[claimless] agent=${cfg.agentId} score=${score} accepted=${accepted} breach=${breach}`,
   );
 
-  // When ParametricTrigger lands (Week 3), replace the log above with a write:
-  //   const report = runtime.report({ encodedPayload: encode(...), encoderName: "<name>" }).result();
-  //   evmClient.writeReport(runtime, { receiver: FORWARDER, report }).result();
+  // When ParametricTrigger lands, replace this log with a signed write:
+  //   const report = runtime.report(prepareReportRequest(encodedPayload)).result();
+  //   evm.writeReport(runtime, { receiver: FORWARDER, report }).result();
   // The consumer contract then implements IReceiver.onReport(bytes,bytes).
+  void FORWARDER;
 
   return {
-    agentId: agentId.toString(),
+    agentId: cfg.agentId,
     score,
-    acceptedIncidents,
-    threshold: SCORE_TRIGGER_THRESHOLD,
-    triggered,
-    reason,
+    acceptedIncidents: accepted,
+    scoreThreshold: cfg.scoreThreshold,
+    breach,
+    decision,
   };
-}
+};
 
-/* ──────────────────────────────── entrypoint ───────────────────────────── */
+/* ───────────────────────────── workflow ────────────────────────────────── */
 
-const initWorkflow = (config: NodeRuntime<TriggerInput>) => {
+const initWorkflow = (config: TriggerConfig) => {
   const cron = new CronCapability();
+
   return [
     handler(
       cron.trigger({ schedule: "*/5 * * * *" }), // every 5 minutes
-      evaluateTrigger,
-      consensusIdenticalAggregation<TriggerEvaluation>(),
+      onCronTrigger,
     ),
   ];
 };
 
 export async function main(): Promise<void> {
-  const runner = await Runner.newRunner<TriggerInput>();
+  const runner = await Runner.newRunner<TriggerConfig>({ configSchema });
   await runner.run(initWorkflow);
 }
-
-// `bytesToHex` is imported for the write path's logging; reference it so the
-// import is not flagged as unused while the write step is pending.
-void bytesToHex;
-
-await main();

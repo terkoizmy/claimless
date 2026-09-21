@@ -1,0 +1,10 @@
+{
+  "//": "Claimless trigger workflow config — production (Monad mainnet).",
+  "//status": "Placeholder. Mainnet contract addresses are filled after a mainnet deploy.",
+  "agentId": 0,
+  "scoreThreshold": 80,
+  "minAcceptedIncidents": 1,
+  "incidentRegistry": "",
+  "riskScore": "",
+  "chainName": "monad-mainnet"
+}

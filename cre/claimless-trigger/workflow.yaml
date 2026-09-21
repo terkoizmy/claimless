@@ -1,11 +1,34 @@
 # Claimless trigger workflow — workflow-specific settings.
 #
-# Artifacts are written to the workflow directory by `cre workflow build`.
+# Schema per CRE docs (reference/project-configuration-ts):
+#   <target>:
+#     user-workflow:
+#       workflow-name: "..."
+#     workflow-artifacts:
+#       workflow-path: "./main.ts"      # TS points at the entry FILE
+#       config-path:   "./config.<target>.json"
+#       secrets-path:  ""               # or "../secrets.yaml"
+#
+# Both `workflow-path` and `config-path` are REQUIRED. Getting the nesting wrong
+# produces: "WorkflowPath is a required field / WorkflowName is a required field".
+#
+# `deployment-registry: private` uses the Chainlink-hosted private registry via
+# the CRE login session, so no linked key and no gas are needed for registry ops.
 
 staging-settings:
-  workflow-name: claimless-trigger-staging
-  deployment-registry: private
+  user-workflow:
+    workflow-name: claimless-trigger-staging
+    deployment-registry: private
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.staging.json"
+    secrets-path: ""
 
 production-settings:
-  workflow-name: claimless-trigger
-  deployment-registry: private
+  user-workflow:
+    workflow-name: claimless-trigger
+    deployment-registry: private
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.production.json"
+    secrets-path: ""
