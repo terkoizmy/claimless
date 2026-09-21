@@ -22,7 +22,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test --experimental-strip-types test/*.test.ts",
+    "test": "npm run build && node --test --experimental-strip-types test/*.test.ts",
     "registry:demo": "tsx scripts/registry-demo.ts",
     "risk:demo": "tsx scripts/risk-demo.ts",
     "envio:demo": "tsx scripts/envio-demo.ts",

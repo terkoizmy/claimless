@@ -114,8 +114,37 @@ kind    = privy
 | Bounty | "Best use of Nansen" — score enriched with smart-money data (beyond raw) |
 | Value | $5,000 |
 | Sponsor | Nansen |
-| Status | **NOT REGISTERED** |
-| Signup URL | https://nansen.ai/query → API key from the Nansen API console (docs: https://docs.nansen.ai). Exact API-console URL: UNCERTAIN — confirm at signup. |
+| Status | ✅ **DONE 2026-09-21 — live call verified, credit accounting correct** |
+| Signup URL | https://nansen.ai/query → API key from the Nansen API console (docs: https://docs.nansen.ai). |
+
+**Live verification (2026-09-21).** A real authenticated call, not a mock:
+
+```
+POST https://api.nansen.ai/api/v1/smart-money/netflow
+  header: apikey: <NANSEN_API_KEY>
+  body:   {"chains":["ethereum"]}
+-> HTTP 200, real smart-money netflow rows (token, net_flow_1h/24h/7d/30d, trader_count, ...)
+```
+
+And through the SDK, with credit accounting visible:
+
+```
+npm run nansen:demo
+  creditsSpent after 1st call: 1
+  creditsSpent after 2nd call: 1     <- cache hit, no extra credit burned
+  cache: 1 entries
+  reporterWeight: 0.5
+  ── Credit ledger ──
+  calls: 1  creditsSpent: 1/100 trial
+```
+
+**Auth detail that is easy to get wrong:** the header name is lowercase **`apikey`**. The docs say so explicitly and every endpoint's OpenAPI schema agrees (`"name": "apikey", "in": "header"`).
+
+**Budget discipline.** The free plan is 100 trial credits, then 10/day. Costs verified per endpoint: `pnl-summary` = 1, `smart-money/netflow` = 5, `tgm/holders` = 5, and **`profiler/address/labels` = 100 credits, which is disabled in code by design** so a single call cannot burn the whole trial. Responses carry `X-Nansen-Credits-Used` / `X-Nansen-Credits-Remaining`, and the SDK records the exact value on live calls.
+
+**Bug found and fixed during verification:** the demo script's hardcoded "well-known address" (`0xd8dA6BF26964aF9D7eD9eC36A1bCB34A0E3F4b2`) was **41 characters, not 42** and was rejected by the API as an invalid address. Replaced with the ENS-resolved `vitalik.eth` address, `0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045`, checked at 42 characters. This is the second truncation bug of the same shape (see CRE), so address literals are now treated as a known failure mode.
+
+**Consuming code:** `sdk/src/nansen.ts` — `getAddressPnl`, `getSmartMoneyNetflow`, plus a credit ledger and response cache. Feeds `reporterWeight` in the risk score. Verify with `npm run nansen:demo`.
 
 **Env vars it produces** (verbatim):
 
@@ -145,8 +174,41 @@ kind    = privy
 | Bounties | "Best Mera-Powered UX on Monad" **$2,500** + "Mera: One Passkey, Many Keys" **$2,500** |
 | Value | $5,000 total |
 | Sponsor | Category Labs (not Monad Foundation) |
-| Status | **NOT REGISTERED** — there is no account to create; Mera is keyless |
+| Status | 🟡 **CODE COMPLETE + NODE-VERIFIED; browser PRF ceremony still pending a human** |
 | Signup URL | None. Test at https://mera.category.xyz/demo |
+
+**What is verified (2026-09-21).** There is no account and no key, so "registration" is not the gate. The gate is a browser ceremony. Everything *around* the ceremony is now mechanically tested — 8 tests, all passing:
+
+```
+npm test
+✔ deriveManyKeys: same PRF output yields the same addresses
+✔ deriveManyKeys: distinct indexes yield distinct addresses
+✔ deriveManyKeys: a different PRF output yields different addresses
+✔ deriveManyKeys: addresses are well-formed EVM addresses
+✔ deriveManyKeys: purpose labels follow the documented convention
+✔ deriveManyKeys: a wrong-length PRF output is rejected
+✔ deriveManyKeys: count bounds are enforced
+✔ deriveManyKeys: index 0 is stable across purpose prefixes
+8 passed, 0 failed
+```
+
+`npm run mera:demo` also exercises the full derivation, the viem account adapter, and ERC-191/EIP-712 signing in Node (using a clearly-labelled STUB PRF value). It prints five distinct EOAs from one 32-byte PRF input, all reproducible.
+
+**The honest boundary.** `isMeraAvailable()` is `false` under Node, and that is correct, not a bug: the PRF output is computed **inside the authenticator**, so it cannot exist in Node and cannot be polyfilled.
+
+| Proven without a browser | Proven only by a human in Chrome |
+|---|---|
+| Same PRF → same addresses (determinism) | A real passkey ceremony returns a PRF output at all |
+| N indexes → N distinct addresses | Google Password Manager stores it (vs local profile) |
+| Wrong-length PRF rejected | The same address reappears on a second synced device |
+
+**The 2-minute human step that closes it:**
+1. Desktop Chrome, signed into Google, sync ON.
+2. Serve over HTTPS or `http://localhost` (WebAuthn needs a secure context).
+3. Click sign-in → Chrome saves the passkey to **Google Password Manager**.
+4. Confirm the derived address, then repeat on another synced device: the same address must reappear.
+
+Zero-cost cross-check with no code: https://mera.category.xyz/demo
 
 **Env vars it produces** (verbatim):
 
@@ -154,7 +216,7 @@ kind    = privy
 |---|---|
 | `MERA_ENABLED` | Feature flag only (`true`). No API key, no server, no custody — nothing to configure. |
 
-**Consuming code:** `sdk/src/mera.ts` — passkey login for the **human underwriter** (wallet separation: Mera for humans, Privy for autonomous agents). For "One Passkey, Many Keys": derive many per-purpose accounts from one passkey in the same module.
+**Consuming code:** `sdk/src/mera.ts` — passkey login for the **human underwriter** (wallet separation: Mera for humans, Privy for autonomous agents). For "One Passkey, Many Keys": `deriveManyKeys` in the same module. Tests in `sdk/test/mera.test.ts`. Verify with `npm run mera:demo` and `npm test`.
 
 **Facts:**
 

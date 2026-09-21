@@ -27,7 +27,7 @@ import {
 } from "../src/nansen.js";
 
 /** Well-known, high-activity address for the keyed demo (vitalik.eth). */
-const DEMO_ADDRESS = "0xd8dA6BF26964aF9D7eD9eC36A1bCB34A0E3F4b2";
+const DEMO_ADDRESS = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 
 function printCreditTable(): void {
   console.log("Credit cost table (documented, VERIFIED in docs/sponsor-notes.md):");
