@@ -733,3 +733,69 @@ Signs: running >5 minutes with no progress, or `Progress: 0/N todos` frozen.
 - [ ] Prompt states file boundaries (one agent = one primary file)
 - [ ] `await_members` called before moving on
 - [ ] `swarm cleanup` called when done
+
+### 11.11 Lessons learned (2026-09-21, first parallel build session)
+
+**What worked.** Three workers ran concurrently on genuinely disjoint directories (`web/`, `mcp/`, `mm-plugin/`) with no file conflicts. The rule "one agent = one primary directory" held.
+
+**Non-obvious requirements for the prompt.** Each of these was learned by leaving it out:
+
+1. **State the WHY, not just the what.** A prompt that says "build an MCP server" produces generic
+   scaffolding. A prompt that says "828k agents registered and ~0 feedback, so the point is removing
+   the integration barrier" produced tools shaped around the actual problem. Include the research
+   context or expect filler.
+
+2. **Name the reference implementation if one exists.** For `mm-plugin`, pointing at an already-cloned
+   official template (`%TEMP%\_mmtpl`) meant the worker copied the authoritative structure instead of
+   inventing one. Clone the template first, then spawn.
+
+3. **Forbid mock data explicitly.** Without it, a worker will happily render fake numbers when an RPC
+   read fails, which is worse than an error message in a project whose whole claim is "live data,
+   not mocks". Say: if you cannot read it, show the failure.
+
+4. **Require self-verification with the real output.** "Build succeeds" is not done. Ask for the exact
+   command output and the values actually observed. A worker that only compiled, never ran, has not
+   finished.
+
+5. **Prohibit writing an install you cannot do.** `mm-plugin` cannot be end-to-end tested without the
+   `mm` CLI. Telling the worker up front to say so plainly, rather than claim a live run, produced an
+   honest report instead of a fabricated one.
+
+6. **Forbid editing outside the assigned directory, by name.** List the sibling directories that are
+   off-limits. "Do not touch other files" is too vague.
+
+**Prompt template that incorporates all six:**
+
+```
+<one-sentence task>
+
+READ FIRST: <docs and any template/reference path>
+WORKDIR: <repo root>
+YOUR SCOPE: ONLY <dir>. You own every file under it. Do NOT edit anything outside <dir>.
+
+WHY THIS EXISTS: <the research finding or user need that motivates it>
+
+VERIFIED FACTS (do not re-research): <facts already established>
+
+BUILD THESE <N> THINGS (exactly these, no more): <numbered list>
+
+DEFINITION OF DONE
+- <build command> succeeds.
+- VERIFY IT YOURSELF: <how to exercise it for real>, then report the actual output.
+  A build that compiles but was never executed is not done.
+- Report: files created, build output, and what you did and did not verify.
+
+PROHIBITED
+- Do NOT edit anything outside <dir>.
+- Do NOT modify <explicit list of sibling dirs>.
+- Do NOT create mock/fixture data.
+- Do NOT commit. Leave the working tree dirty; the coordinator commits.
+
+LIMITS: <what they may run>; do not run `forge`; do not touch git.
+```
+
+**Still true from the earlier session:** workers can stall or drift (one wrote seven stray `probe*.js`
+files that had to be deleted, and another burned minutes scanning 105M blocks with `eth_getLogs`
+before being stopped). Always keep a plan to finish the work yourself, and check for stray artifacts
+after cleanup.
+
