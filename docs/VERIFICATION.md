@@ -2,6 +2,27 @@
 
 > Chronological record of what has been verified, on-chain or live. Every row has a
 > transaction, a command output, or a screenshot behind it. Newest first.
+>
+> **Address caveat (2026-09-21):** a redeploy on Sep 21 created a new contract set that
+> added `CoverPool` and `ParametricTrigger`. Entries dated **Sep 16** name the pre-redeploy
+> addresses (`0xF856…`, `0xF61B…`, `0x7eFC…`) and are historically accurate. The current
+> canonical addresses are in `contracts/deployments/monad-testnet.json` and in `AGENTS.md`.
+> Canonical ERC-8004 registry addresses did not change.
+
+## 2026-09-21 — redeploy, demo state, CRE simulation
+
+**Result:** `cd sdk && npm run verify` → **5 passed, 0 failed** against the new deployment.
+
+| Check | Evidence |
+|---|---|
+| Score from the contract | `87` (`acceptedCount=1`, `severitySum=4`) |
+| Score from the Envio indexer | `87` (independent process, GraphQL) |
+| Both paths agree | PASS |
+| ERC-8004 reputation readable | `count=1`, `value=-100`, `decimals=18`, `tag1=claimless:incident` |
+| Aurora Intents live dry quote | PASS (no API key, no funds) |
+| Parametric trigger armed | `checkCondition(policy 1)` → `met=true, score=87, accepted=1, fired=false` |
+| CRE workflow simulate | `[claimless] agent=10182 score=87 accepted=1 breach=false` (matches the contract) |
+| Contracts deployed | 93/93 forge tests; 5 contracts with bytecode on chain 10143 |
 
 ## 2026-09-16 — Week 2: SDK, autonomous agent, sponsor adapters
 
