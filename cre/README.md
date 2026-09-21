@@ -23,14 +23,14 @@ Network**, and any on-chain write travels through Chainlink's
 | Project layout | scaffolded in the official structure (`project.yaml`, `secrets.yaml`, workflow dir) |
 | Workflow code | read-only evaluation implemented (cron → read → decide → log) |
 | Selectors + encoding | **verified live** against the deployed contracts (see below) |
-| `cre workflow simulate` | **pending `cre login`** — needs an account (human step) |
+| `cre workflow simulate` | ✅ **DONE** — simulated live against the canonical deployment (see below) |
 | On-chain write (`writeReport`) | not wired yet: needs `ParametricTrigger.onReport` (Week 3) + the forwarder address |
 
 ## What the workflow does now
 
 1. cron trigger (every 5 minutes)
 2. reads `RiskScore.getScore(agentId)` and `IncidentRegistry.getAcceptedCount(agentId)` from Monad testnet
-3. evaluates the parametric condition: **score < 90 → payout due**
+3. evaluates the parametric condition: **score ≤ 80 (config `scoreThreshold`) and at least one accepted incident → payout due**
 4. logs the decision and returns a structured evaluation
 
 The condition is deliberately narrow and numeric. Basis risk is a known hazard in
@@ -73,9 +73,24 @@ cre/
 :: CRE CLI (already installed to %LOCALAPPDATA%\Programs\cre)
 set "PATH=%PATH%;%LOCALAPPDATA%\Programs\cre"
 cre version                 :: expect v1.34.0 or newer
-cre login                   :: human step: opens an auth flow
-cre workflow simulate claimless-trigger --target staging-settings
+cre login                   :: human step: opens an auth flow (done)
+cre workflow simulate claimless-trigger --target staging-settings --trigger-index 0 --non-interactive
 ```
+
+`cre workflow simulate` prompts for a target unless you pass flags. From inside
+`cre/claimless-trigger`, the non-interactive form above is the one to use.
+
+**Verified 2026-09-21** against the canonical deployment (agent 10182, score 87,
+1 accepted incident):
+
+```
+[SIMULATION] Running trigger trigger=cron-trigger@1.0.0
+[USER LOG] [claimless] agent=10182 score=87 accepted=1 breach=false
+Workflow Simulation Result: { breach: false, decision: "OK: score 87 > 80; no payout", score: 87 }
+```
+
+The value matches `RiskScore.getScore(10182)` on chain exactly, so the workflow
+reads real state, not a mock.
 
 Simulation is free and needs no deployment. Deploying needs approval
 (`cre account access`) and is **not required for the demo**.
