@@ -68,6 +68,7 @@ IncidentRegistry  →  RiskScore  →  CoverPool / ParametricTrigger
 
 ## Docs
 
+- `docs/USER_GUIDE.md` — how an ordinary user uses it (Hermes/MCP setup, verification flow, where the Mera passkey comes from)
 - `PLAN.md` — execution plan, contract specs, bounty map, research context
 - `IDEA.md` — the idea, positioning, tech stack
 - `docs/ERC8004_COLDSTART_FINDINGS.md` — why the reporting layer is the gap

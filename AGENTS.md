@@ -8,6 +8,7 @@
 2. **`IDEA.md`** — the final idea, one-liner, tech stack, wallet architecture.
 3. **`docs/AURORA_INTENTS_IMPLEMENTATION.md`** — everything about the Aurora Intents integration, including verified facts about testnet, minimums, gas, and funding. Read sections 12-15 before writing any Intents code.
 4. **`docs/`** — supporting research: `BOUNTY_STRATEGY.md`, `SPONSOR_FEASIBILITY.md`, `CLAIMLESS_DEEPDIVE.md`, `WALLET_DECISION.md`.
+5. **`docs/USER_GUIDE.md`** — if the task is "how does a *user* use this": Hermes/MCP setup, the agent-verification flow, and where the Mera passkey comes from.
 
 ## 2. Current state (updated 2026-09-21)
 
