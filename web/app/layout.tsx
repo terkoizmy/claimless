@@ -33,6 +33,9 @@ export default function RootLayout({
               <Link href="/coverage/" className="text-[#8fa8bc] hover:text-emerald-300">
                 coverage
               </Link>
+              <Link href="/passkey/" className="text-[#8fa8bc] hover:text-emerald-300">
+                passkey
+              </Link>
               <span className="rounded border border-[#1e2a35] px-2 py-0.5 text-[10px] text-[#6b8299]">
                 monad testnet · 10143
               </span>
