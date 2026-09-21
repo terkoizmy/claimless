@@ -1,0 +1,47 @@
+{
+  "name": "@terkoiz/claimless-mcp",
+  "version": "0.1.0",
+  "description": "Claimless MCP server - read ERC-8004 agent identity, risk scores, and incident history; report incidents to the Claimless on-chain registry on Monad testnet",
+  "mcpName": "io.github.terkoiz/claimless",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "claimless-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "server.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "list-tools": "node scripts/list-tools.mjs",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "keywords": [
+    "mcp",
+    "modelcontextprotocol",
+    "erc-8004",
+    "agent",
+    "risk",
+    "monad",
+    "claimless"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.3"
+  }
+}
