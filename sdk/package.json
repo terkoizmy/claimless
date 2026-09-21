@@ -30,6 +30,7 @@
     "nansen:demo": "tsx scripts/nansen-demo.ts",
     "mera:demo": "tsx scripts/mera-demo.ts",
     "verify": "tsx scripts/verify.ts",
+    "privy:demo": "tsx --env-file=../.env scripts/privy-demo.ts",
     "intents:demo": "tsx scripts/intents-demo.ts",
     "report": "tsx scripts/report.ts"
   },

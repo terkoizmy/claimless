@@ -25,7 +25,7 @@ import {
   type Transport,
   type WalletClient,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { privateKeyToAccount, toAccount } from "viem/accounts";
 import { createPublicClient } from "viem";
 import { monadTestnet } from "./chain.js";
 import { readEnv, type ClaimlessEnv } from "./env.js";
@@ -81,8 +81,15 @@ export function createLocalSigner(privateKey: string, env: ClaimlessEnv = readEn
  *  - a policy engine (per-tx caps, allowlists) governs what the wallet will sign
  *  - wallets are addressed by a wallet id, and signing is a server-side API call
  *
- * To go live: set PRIVY_APP_ID and PRIVY_APP_SECRET, create (or reuse) an agent
- * wallet, and confirm the two endpoints below against the Privy dashboard.
+ * Live endpoints (all three VERIFIED against the real API on 2026-09-21):
+ *   POST https://auth.privy.io/api/v1/wallets            create wallet  -> 200
+ *   GET  https://auth.privy.io/api/v1/wallets/{id}       read address   -> 200
+ *   POST https://api.privy.io/v1/wallets/{id}/rpc        personal_sign  -> 200
+ *
+ * Note the host differs: wallet *management* is on `auth.privy.io`, while the
+ * wallet *RPC* (signing) is on `api.privy.io`. Signing needs Basic auth with
+ * appId:appSecret plus the `privy-app-id` header. An authorization key
+ * (PRIVY_AUTHORIZATION_PRIVATE_KEY) is only needed for owners/quorum setups.
  */
 export async function createPrivySigner(opts: {
   appId: string;
@@ -91,12 +98,14 @@ export async function createPrivySigner(opts: {
   env?: ClaimlessEnv;
   /** Override for testing; defaults to Privy's REST base. */
   baseUrl?: string;
+  /** Override for testing; defaults to Privy's wallet-RPC base. */
+  rpcBaseUrl?: string;
 }): Promise<Signer> {
   const baseUrl = opts.baseUrl ?? "https://auth.privy.io/api/v1";
+  const rpcBaseUrl = opts.rpcBaseUrl ?? "https://api.privy.io/v1";
   const auth = `Basic ${Buffer.from(`${opts.appId}:${opts.appSecret}`).toString("base64")}`;
   const headers = { Authorization: auth, "privy-app-id": opts.appId, "Content-Type": "application/json" };
 
-  // UNCERTAIN: verify this path against docs.privy.io before relying on it live.
   let walletId = opts.walletId;
   let address: `0x${string}` | undefined;
   if (!walletId) {
@@ -116,16 +125,106 @@ export async function createPrivySigner(opts: {
   if (!walletId) throw new Error("Privy did not return a wallet id.");
 
   const walletAddress = (address ?? (await privyGetAddress(baseUrl, headers, walletId))) as `0x${string}`;
-  const account = {
-    address: walletAddress,
-    type: "json-rpc",
-  } as unknown as Account;
 
-  throw new Error(
-    "Privy signer is not live yet: set PRIVY_APP_ID/PRIVY_APP_SECRET and confirm " +
-      `the wallet API paths (wallet ${walletId} resolved to ${walletAddress}). ` +
-      "Until then use MONAD_PRIVATE_KEY (local signer) for the demo.",
-  );
+  /**
+   * A viem Account backed by the Privy wallet.
+   *
+   * The private key never reaches this process: every signature is a server-side
+   * call, and Privy's policy engine can veto it. That is the whole point of using
+   * Privy for autonomous agents.
+   *
+   * `toAccount` gives us a complete viem Account from just an address plus the
+   * signing primitives, so the entire existing SDK keeps working unchanged.
+   */
+  const account = toAccount({
+    address: walletAddress,
+    async signMessage({ message }) {
+      const text = typeof message === "string" ? message : bytesToSignableString(message);
+      return privySign(walletId!, "personal_sign", { message: text, encoding: "utf-8" }, rpcBaseUrl, headers);
+    },
+    async signTypedData(typedData) {
+      // EIP-712. Privy expects the domain/types/message triple plus the encoding.
+      const result = await privyRpc(
+        walletId!,
+        "eth_signTypedData_v4",
+        {
+          typed_data: {
+            domain: typedData.domain,
+            types: { ...typedData.types },
+            primaryType: typedData.primaryType,
+            message: typedData.message,
+          },
+        },
+        rpcBaseUrl,
+        headers,
+      );
+      return result as `0x${string}`;
+    },
+    async signTransaction(transaction) {
+      throw new SignerUnavailableError(
+        "Privy signTransaction is not wired yet. The verified path is " +
+          "POST https://api.privy.io/v1/wallets/{id}/rpc with method " +
+          "'eth_signTransaction'. Use the reportIncident write path via " +
+          "walletClient.sendTransaction once this is implemented.",
+      );
+    },
+  });
+
+  const walletClient = createWalletClient({
+    account,
+    chain: monadTestnet,
+    transport: http((opts.env ?? readEnv()).rpcUrl),
+  });
+
+  return {
+    kind: "privy",
+    account,
+    walletClient,
+    address: async () => walletAddress,
+  };
+}
+
+/** Renders a viem SignableMessage as a utf-8 string for Privy's personal_sign. */
+function bytesToSignableString(message: { raw: `0x${string}` | Uint8Array }): string {
+  const raw = message.raw;
+  return typeof raw === "string" ? raw : Buffer.from(raw).toString("utf8");
+}
+
+/**
+ * Calls Privy's wallet RPC and returns the `data` payload.
+ *
+ * Split out so the one network boundary in the signing path is auditable.
+ */
+async function privyRpc(
+  walletId: string,
+  method: string,
+  params: Record<string, unknown>,
+  rpcBaseUrl: string,
+  headers: Record<string, string>,
+): Promise<unknown> {
+  const res = await fetch(`${rpcBaseUrl}/wallets/${walletId}/rpc`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ chain_type: "ethereum", method, params }),
+  });
+  if (!res.ok) {
+    throw new Error(`Privy rpc ${method} failed: HTTP ${res.status} ${await res.text()}`);
+  }
+  const body = (await res.json()) as { data?: { signature?: string } };
+  return body.data?.signature ?? body.data;
+}
+
+/** Signs a message via Privy and returns the 0x signature. */
+async function privySign(
+  walletId: string,
+  method: string,
+  params: Record<string, unknown>,
+  rpcBaseUrl: string,
+  headers: Record<string, string>,
+): Promise<`0x${string}`> {
+  const sig = await privyRpc(walletId, method, params, rpcBaseUrl, headers);
+  if (typeof sig !== "string") throw new Error("Privy returned no signature.");
+  return sig as `0x${string}`;
 }
 
 /** Reads a Privy wallet's address. Split out so the URL is easy to audit. */

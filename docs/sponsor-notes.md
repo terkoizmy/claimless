@@ -49,18 +49,49 @@
 | Bounty | "Privy!" — agent wallet (not just login) + policy engine |
 | Value | $5,000 |
 | Sponsor | Privy |
-| Status | **NOT REGISTERED** |
-| Signup URL | https://dashboard.privy.io (create app → App ID / App Secret / Authorization key). Exact console path: UNCERTAIN — confirm when signing up. |
+| Status | ✅ **DONE 2026-09-21 — live-verified end-to-end** |
+| Signup URL | https://dashboard.privy.io (create app → App ID / App Secret). No card required. |
+
+**Live verification (2026-09-21).** All three endpoints were called against the real API, not mocked:
+
+| Call | Endpoint | Result |
+|---|---|---|
+| Create agent wallet | `POST https://auth.privy.io/api/v1/wallets` | ✅ HTTP 200, wallet created |
+| Read wallet | `GET https://auth.privy.io/api/v1/wallets/{id}` | ✅ HTTP 200 |
+| **Sign message** | `POST https://api.privy.io/v1/wallets/{id}/rpc` | ✅ HTTP 200, signature returned |
+
+And a cryptographic check, not just HTTP 200s: `npm run privy:demo` signs a message through the Privy wallet and then **recovers the signer from the signature with viem's `verifyMessage`**, confirming it maps to the wallet address.
+
+```
+status: configured (appId=cmuay01ox00790djphgz5wlmo)
+kind    = privy
+1) wallet created
+2) message signed via Privy's wallet RPC
+3) signature recovers to the wallet address
+[PASS] Privy agent wallet signs, and the signature verifies
+       The private key never touched this process.
+```
+
+**Two hosts, not one** (easy to get wrong):
+
+| Purpose | Host |
+|---|---|
+| Wallet management (create, read, policies) | `auth.privy.io/api/v1` |
+| Wallet RPC (signing) | `api.privy.io/v1` |
+
+**`PRIVY_AUTHORIZATION_PRIVATE_KEY` is NOT required** for a simple app-owned agent wallet: Basic auth with `appId:appSecret` plus the `privy-app-id` header is enough. The authorization key is for owner/quorum setups. It remains empty in `.env` and that is correct.
 
 **Env vars it produces** (verbatim):
 
-| Var | Meaning |
-|---|---|
-| `PRIVY_APP_ID` | App ID from the Privy dashboard |
-| `PRIVY_APP_SECRET` | App secret (server-side only) |
-| `PRIVY_AUTHORIZATION_PRIVATE_KEY` | Authorization signing key for server-side wallet control |
+| Var | Meaning | Needed? |
+|---|---|---|
+| `PRIVY_APP_ID` | App ID from the Privy dashboard | ✅ required |
+| `PRIVY_APP_SECRET` | App secret (server-side only) | ✅ required |
+| `PRIVY_AUTHORIZATION_PRIVATE_KEY` | Authorization signing key for server-side wallet control | ❌ not needed for this integration |
 
-**Consuming code:** `sdk/src/privy.ts` — autonomous agent wallet (TEE-held keys, ephemeral signing key, policy engine). Used by `agents/reporter.ts` so an agent reports incidents with zero user interaction.
+**Consuming code:** `sdk/src/signer.ts#createPrivySigner` (live) ← `sdk/src/privy.ts` (status + wrapper) ← `agents/reporter.ts` (agent reports with zero user interaction). Verify with `npm run privy:demo`.
+
+**Still open:** `signTransaction` is not wired yet. The verified path is `POST https://api.privy.io/v1/wallets/{id}/rpc` with method `eth_signTransaction`. Needed before the agent can submit `reportIncident` on-chain through a Privy wallet.
 
 **Facts:**
 
