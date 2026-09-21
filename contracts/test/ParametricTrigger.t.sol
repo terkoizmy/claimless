@@ -241,6 +241,28 @@ contract ParametricTriggerTest is Test {
         trigger.registerTrigger(policyId, AGENT, 60, 1);
     }
 
+    /// @dev Security regression: the trigger's agent must be the policy's own
+    ///      agent. Without this, an attacker registers a trigger for policy P
+    ///      (agent 10182) while naming a different, low-scoring agent, making the
+    ///      condition true and draining a pool policy that was never about it.
+    function test_RegisterTrigger_RejectsAgentThatIsNotThePolicyAgent() public {
+        uint256 constant_ATTACKER_AGENT = 999999;
+        _reportAndFinalize(AGENT, 5);
+        score.recompute(AGENT);
+        (uint256 policyId, ) = _buyMax(AGENT);
+        assertEq(pool.getPolicy(policyId).agentId, AGENT, "policy is about AGENT");
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ParametricTrigger.AgentMismatch.selector, AGENT, constant_ATTACKER_AGENT)
+        );
+        trigger.registerTrigger(policyId, constant_ATTACKER_AGENT, 100, 1);
+
+        // And the legitimate registration still works, and records the policy's
+        // own agent regardless of the caller passing it correctly.
+        trigger.registerTrigger(policyId, AGENT, 50, 1);
+        assertEq(trigger.getTrigger(policyId).agentId, AGENT);
+    }
+
     function test_CheckConditionRevertsForUnregistered() public {
         vm.expectRevert(ParametricTrigger.TriggerNotRegistered.selector);
         trigger.checkCondition(123);

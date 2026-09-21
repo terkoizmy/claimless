@@ -91,6 +91,8 @@ contract ParametricTrigger is IReceiver {
     error AlreadyFired();
     error PolicyNotActive();
     error ConditionNotMet(uint256 score, uint256 threshold);
+    /// @notice The caller-supplied agentId does not match the policy's agent.
+    error AgentMismatch(uint256 policyAgentId, uint256 providedAgentId);
 
     /// @param pool_ Coverage pool holding the capital to pay out.
     /// @param riskScore_ Deterministic score contract.
@@ -111,6 +113,12 @@ contract ParametricTrigger is IReceiver {
     /// @notice Register the payout condition for a policy that exists in the pool.
     /// @dev Permissionless: anyone may register a trigger for any live policy.
     ///      The condition is data, not a privilege.
+    ///
+    ///      SECURITY: the agent under observation is the policy's own agent, and
+    ///      the caller-supplied `agentId` must match it. Without this check an
+    ///      attacker could register a trigger for policy P (agent X) while naming
+    ///      a different, low-scoring agent Y, making the condition true and
+    ///      draining the pool for a policy that was never about Y.
     function registerTrigger(
         uint256 policyId,
         uint256 agentId,
@@ -118,11 +126,14 @@ contract ParametricTrigger is IReceiver {
         uint256 minAcceptedIncidents
     ) external {
         if (_triggers[policyId].registered) revert TriggerAlreadyRegistered();
-        if (!pool.getPolicy(policyId).active) revert PolicyNotActive();
+
+        CoverPool.Policy memory policy = pool.getPolicy(policyId);
+        if (!policy.active) revert PolicyNotActive();
+        if (agentId != policy.agentId) revert AgentMismatch(policy.agentId, agentId);
 
         _triggers[policyId] = Trigger({
             policyId: policyId,
-            agentId: agentId,
+            agentId: policy.agentId,
             scoreThreshold: scoreThreshold,
             minAcceptedIncidents: minAcceptedIncidents,
             registered: true,
@@ -130,7 +141,7 @@ contract ParametricTrigger is IReceiver {
         });
         _registeredPolicies.push(policyId);
 
-        emit TriggerRegistered(policyId, agentId, scoreThreshold, minAcceptedIncidents);
+        emit TriggerRegistered(policyId, policy.agentId, scoreThreshold, minAcceptedIncidents);
     }
 
     // --------------------------- evaluation -------------------------------
