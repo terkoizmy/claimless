@@ -68,7 +68,7 @@ the two cap numbers scale with it. Read aloud whatever the screen shows; the
 - [ ] **SDK gate:** `cd sdk && npm run verify` — expect **5 passed, 0 failed** (contract score = indexer score = 87 path, registry counts, ERC-8004 summary readable, Aurora dry quote returned).
 - [ ] **Web build:** `cd web && npm run build` (static export into `out/` must succeed), then `npm run dev` → `http://localhost:3000`.
 - [ ] **Terminal:** font large enough for 1080p (≥16pt equivalent), dark theme, clear scrollback (`cls` in cmd.exe before each shot).
-- [ ] **Explorer tabs pre-opened** at `https://testnet.monadvision.com/address/...` for IncidentRegistry `0xfE23A58f08bCd245ee61cb08dE1d27d2c27c5944`, RiskScore `0x5cFA4968a9225fd5bCAbF88B6A35A9748E6215F4`, CoverPool `0x93634116bDDfeE1098491c839DDDfd7BaA8b7f30`, ParametricTrigger `0xC5F875721E60C3198dA99Aaa639914e64fb15D12`, and the canonical ERC-8004 Identity `0x8004A818BFB912233c491871b3d84c89A494BD9e`.
+- [ ] **Explorer tabs pre-opened** at `https://testnet.monadvision.com/address/...` for IncidentRegistry `0xf6B7b759EDcc25AC2D8e941ccbA0A03E401a771D`, RiskScore `0xC839223ca14BFbe1DA4bC72e885eCe18caCed690`, CoverPool `0xA7CDb9c01A329c179da20beE22110082B3CaC0Ae`, ParametricTrigger `0x12B582FFF71f93dDbfb673189c3C206E9A1c1204`, and the canonical ERC-8004 Identity `0x8004A818BFB912233c491871b3d84c89A494BD9e`.
 - [ ] **Wallet env:** `.env` has `MONAD_PRIVATE_KEY` (seed + evaluate) and the Privy vars (`PRIVY_APP_ID` / `PRIVY_APP_SECRET`) if you want the reporter's banner to say `privy`. Without them the banner honestly says it used the local-key fallback; decide which story you are telling and keep it consistent.
 - [ ] **Foundry on PATH:** `cast` resolves (Foundry 1.8.3 at `%USERPROFILE%\.foundry\bin`).
 - [ ] **Armed, not fired:** confirm the seed's last line shows `fired=false` for the armed policy. If a take misfires, re-run the seed: after a fired policy it buys a **fresh** policy and re-arms it automatically.
@@ -123,7 +123,7 @@ the two cap numbers scale with it. Read aloud whatever the screen shows; the
 
 ### Shot 6 — The condition, measured (1:45-1:55) · READ-ONLY
 
-**Action:** `cast call 0xC5F875721E60C3198dA99Aaa639914e64fb15D12 "checkCondition(uint256)(bool,uint256,uint256)" <policyId> --rpc-url https://testnet-rpc.monad.xyz` (policyId from the seed output).
+**Action:** `cast call 0x12B582FFF71f93dDbfb673189c3C206E9A1c1204 "checkCondition(uint256)(bool,uint256,uint256)" <policyId> --rpc-url https://testnet-rpc.monad.xyz` (policyId from the seed output).
 
 **On screen:** the tuple `true, 87, 1` → met=true, score=87, accepted=1. The seed already printed this before recording: `checkCondition: met=true score=87 accepted=1 fired=false`, plus `policy <id> is ARMED and its condition is met`.
 
@@ -131,7 +131,7 @@ the two cap numbers scale with it. Read aloud whatever the screen shows; the
 
 ### Shot 7 — The payout fires, live (1:55-2:18) · **LIVE WRITE** (the money moment)
 
-**Action:** `cast send 0xC5F875721E60C3198dA99Aaa639914e64fb15D12 "evaluate(uint256)" <policyId> --private-key %MONAD_PRIVATE_KEY% --rpc-url https://testnet-rpc.monad.xyz`
+**Action:** `cast send 0x12B582FFF71f93dDbfb673189c3C206E9A1c1204 "evaluate(uint256)" <policyId> --private-key %MONAD_PRIVATE_KEY% --rpc-url https://testnet-rpc.monad.xyz`
 *(the exact command, with the current policyId, is printed by `npm run seed:demo`; in cmd.exe use `%MONAD_PRIVATE_KEY%`, in POSIX shells `$MONAD_PRIVATE_KEY`).*
 
 **On screen:** the tx hash and block; then the explorer receipt with `TriggerEvaluated(policyId, true, 87, 1)` and **`PayoutExecuted(policyId, 10182, 40000000000000000, "score 87 <= 90 with 1 accepted incident(s)")`** — 0.04 MON moved from the pool to the buyer. *(Threshold in the reason string is whatever the trigger was registered with; the seed registers 90. Confirm on the day; do not script a different number.)*

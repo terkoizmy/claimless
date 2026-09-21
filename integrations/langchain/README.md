@@ -95,9 +95,9 @@ Addresses come from the SDK config, which mirrors `contracts/deployments/monad-t
 
 | Contract | Address |
 |---|---|
-| IncidentRegistry | `0xfE23A58f08bCd245ee61cb08dE1d27d2c27c5944` |
-| RiskScore | `0x5cFA4968a9225fd5bCAbF88B6A35A9748E6215F4` |
-| AgentIdentity (ERC-8004 adapter) | `0x6a075C7A2ebcB43F4E08FEd922AaF058437fa4dA` |
+| IncidentRegistry | `0xf6B7b759EDcc25AC2D8e941ccbA0A03E401a771D` |
+| RiskScore | `0xC839223ca14BFbe1DA4bC72e885eCe18caCed690` |
+| AgentIdentity (ERC-8004 adapter) | `0x4871Cf94B11A5804F63629A21DFF133C6958eDfa` |
 | ERC-8004 IdentityRegistry (canonical) | `0x8004A818BFB912233c491871b3d84c89A494BD9e` |
 | ERC-8004 ReputationRegistry (canonical) | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
 

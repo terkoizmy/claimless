@@ -41,6 +41,8 @@ const RECORD_AGENTS: readonly { id: bigint; severity: number }[] = [{ id: 10182n
 const ERC8004_AGENT_ID = 1867n;
 
 const POOL_ABI = parseAbi([
+  "function deposit() payable",
+  "function totalCapital() view returns (uint256)",
   "function quotePremium(uint256 agentId, uint256 amount, uint256 duration) view returns (uint256 premium, uint256 maxCoverage, bool hadRecord, uint256 riskMultiplier)",
   "function buyCover(uint256 agentId, uint256 amount, uint256 duration) payable returns (uint256 policyId)",
   "function policyCount() view returns (uint256)",
@@ -63,6 +65,10 @@ const RISK_ABI = parseAbi([
 const COVER_AMOUNT = 40_000_000_000_000_000n; // 0.04 MON (normal per-policy cap)
 const COVER_DURATION = 30n * 24n * 60n * 60n; // 30 days
 const SCORE_THRESHOLD = 90n;
+/// @dev Underwriter capital to deposit if the pool is empty. The normal
+///      per-policy cap is 20% of this (NORMAL_MAX_CAPACITY_BPS), so 2 MON gives
+///      a 0.4 MON cap, comfortably above COVER_AMOUNT.
+const POOL_DEPOSIT = 2_000_000_000_000_000_000n; // 2 MON
 
 const POOL = CLAIMLESS_TESTNET.coverPool as `0x${string}`;
 const TRIGGER = CLAIMLESS_TESTNET.parametricTrigger as `0x${string}`;
@@ -174,8 +180,27 @@ async function main(): Promise<void> {
     log("score", `agent ${id} score=${score} recompute persisted (tx=${tx})`);
   }
 
-  // ── 3. Buy coverage for the CRE-featured agent (10182) ───────────────────
+  // ── 3. Fund the pool, then buy coverage for the CRE-featured agent ────────
+  // The pool starts empty on a fresh deployment, so the per-policy cap is 0
+  // until an underwriter deposits. Deposit first; the cap is a fraction of
+  // totalCapital.
   const FEATURED = 10182n;
+  const totalCapital = await read<bigint>(publicClient, POOL, POOL_ABI, "totalCapital");
+  if (totalCapital < POOL_DEPOSIT) {
+    const depTx = await walletClient.writeContract({
+      address: POOL,
+      abi: POOL_ABI,
+      functionName: "deposit",
+      value: POOL_DEPOSIT,
+      account,
+      chain: monadTestnet,
+    });
+    await publicClient.waitForTransactionReceipt({ hash: depTx });
+    log("pool", `deposited ${formatEther(POOL_DEPOSIT)} MON underwriter capital (tx=${depTx})`);
+  } else {
+    log("pool", `pool already has ${formatEther(totalCapital)} MON capital`);
+  }
+
   const policyCount = await read<bigint>(publicClient, POOL, POOL_ABI, "policyCount");
   let policyId: bigint | undefined;
   for (let i = policyCount - 1n; i >= 0n; i--) {

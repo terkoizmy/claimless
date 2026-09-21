@@ -51,11 +51,11 @@ The single source of truth is `contracts/deployments/monad-testnet.json`.
 
 | Contract | Address |
 |---|---|
-| IncidentRegistry | `0xfE23A58f08bCd245ee61cb08dE1d27d2c27c5944` |
-| RiskScore | `0x5cFA4968a9225fd5bCAbF88B6A35A9748E6215F4` |
-| AgentIdentity | `0x6a075C7A2ebcB43F4E08FEd922AaF058437fa4dA` |
-| CoverPool | `0x93634116bDDfeE1098491c839DDDfd7BaA8b7f30` |
-| ParametricTrigger | `0xC5F875721E60C3198dA99Aaa639914e64fb15D12` |
+| IncidentRegistry | `0xf6B7b759EDcc25AC2D8e941ccbA0A03E401a771D` |
+| RiskScore | `0xC839223ca14BFbe1DA4bC72e885eCe18caCed690` |
+| AgentIdentity | `0x4871Cf94B11A5804F63629A21DFF133C6958eDfa` |
+| CoverPool | `0xA7CDb9c01A329c179da20beE22110082B3CaC0Ae` |
+| ParametricTrigger | `0x12B582FFF71f93dDbfb673189c3C206E9A1c1204` |
 
 ## Architecture (4 layers)
 

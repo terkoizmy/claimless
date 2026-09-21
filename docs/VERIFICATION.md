@@ -9,6 +9,20 @@
 > canonical addresses are in `contracts/deployments/monad-testnet.json` and in `AGENTS.md`.
 > Canonical ERC-8004 registry addresses did not change.
 
+## 2026-09-21 — security fix redeployed; demo state restored
+
+Two access-control bugs found in the previous deployment were fixed and the
+whole stack redeployed (all five contracts, `pool.setTrigger(trigger)` wired in
+the deploy script).
+
+| Check | Evidence |
+|---|---|
+| Contract tests (with both regressions) | **96 passed, 0 failed** |
+| Attacker cannot execute a payout | `executePayout(0)` from `0x…dEaD` reverts `NotTriggerAuthorised` on the live pool |
+| Pool wired to the trigger | `pool.trigger()` == the deployed `ParametricTrigger` |
+| `sdk verify` against the new set | **5 passed, 0 failed** |
+| Demo state | 10182 score **87**, policy armed (`checkCondition` → `met=true, fired=false`); pool funded 2 MON |
+
 ## 2026-09-21 — redeploy, demo state, CRE simulation
 
 **Result:** `cd sdk && npm run verify` → **5 passed, 0 failed** against the new deployment.

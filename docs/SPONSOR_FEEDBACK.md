@@ -355,7 +355,7 @@ this week.)
 (IdentityRegistry `0x8004A818BFB912233c491871b3d84c89A494BD9e`, ReputationRegistry
 `0x8004B663056A597Dffe9eCcC1965A193B7388713` on Monad testnet 10143).
 
-- `contracts/src/AgentIdentity.sol` (`0x6a075C7A2ebcB43F4E08FEd922AaF058437fa4dA`): adapter that
+- `contracts/src/AgentIdentity.sol` (`0x4871Cf94B11A5804F63629A21DFF133C6958eDfa`): adapter that
   registers agents in the canonical IdentityRegistry and pushes risk summaries into the canonical
   ReputationRegistry (`tag1 = "claimless:incident"`).
 - `sdk/src/erc8004.ts`: read Identity/Reputation, publish summaries; surfaced by the dashboard and
@@ -372,7 +372,7 @@ this week.)
 
 (The Sep-16 txs above went through the pre-redeploy adapter `0x7eFC5354…`; the canonical
 registries are the same addresses today. The current deployment's adapter is
-`0x6a075C7A2ebcB43F4E08FEd922AaF058437fa4dA`, and the dashboard/SDK read the canonical
+`0x4871Cf94B11A5804F63629A21DFF133C6958eDfa`, and the dashboard/SDK read the canonical
 `IdentityRegistry`/`ReputationRegistry` directly. Exact current summary value for 1867 is read
 live by `npm run verify`; we do not quote a number we have not read.)
 

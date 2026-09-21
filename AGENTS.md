@@ -26,27 +26,27 @@ SDK, CRE config, indexer env, and web dashboard all mirror it):
 
 | Contract | Address |
 |---|---|
-| IncidentRegistry | `0xfE23A58f08bCd245ee61cb08dE1d27d2c27c5944` |
-| RiskScore | `0x5cFA4968a9225fd5bCAbF88B6A35A9748E6215F4` |
-| AgentIdentity | `0x6a075C7A2ebcB43F4E08FEd922AaF058437fa4dA` |
-| CoverPool | `0x93634116bDDfeE1098491c839DDDfd7BaA8b7f30` |
-| ParametricTrigger | `0xC5F875721E60C3198dA99Aaa639914e64fb15D12` |
+| IncidentRegistry | `0xf6B7b759EDcc25AC2D8e941ccbA0A03E401a771D` |
+| RiskScore | `0xC839223ca14BFbe1DA4bC72e885eCe18caCed690` |
+| AgentIdentity | `0x4871Cf94B11A5804F63629A21DFF133C6958eDfa` |
+| CoverPool | `0xA7CDb9c01A329c179da20beE22110082B3CaC0Ae` |
+| ParametricTrigger | `0x12B582FFF71f93dDbfb673189c3C206E9A1c1204` |
 
 > **Important:** the Sep 21 redeploy created this set; the pre-redeploy addresses
 > (`0xF856...`, `0xF61B...`, `0x7eFC...`) are stale. Do not reintroduce them.
 
-> **⚠️ Pending live redeploy (security fix, 2026-09-21).** `CoverPool.executePayout`
-> was permissionless in the deployed contract set: anyone could drain an active
-> policy, bypassing the parametric condition. The source is now fixed (payout is
-> gated to the authorised `ParametricTrigger`; `setTrigger` is owner-only and
-> one-shot) and 95/95 tests pass, including the regression test. The **live**
-> contracts still carry the old behaviour because a redeploy needs ~0.58 MON of
-> gas and the deployer has ~0.09 MON. To redeploy: fund
-> `0xF601a214CF0FFf4741e7DD405FB5A75B46388395` from `faucet.monad.xyz` (browser
-> captcha, human step), then run
-> `cd contracts && forge script script/Deploy.s.sol --rpc-url https://testnet-rpc.monad.xyz --broadcast`
-> (the script now wires `pool.setTrigger(trigger)`). Until then, do not deposit
-> further capital into the live pool.
+> **Security fix deployed (2026-09-21).** Two issues found in the previous
+> deployment are fixed and live on this set:
+> 1. `CoverPool.executePayout` was permissionless — anyone could drain an active
+>    policy. It is now gated to the authorised `ParametricTrigger`
+>    (`setTrigger`, owner-only and one-shot). Verified live: a stranger's
+>    `executePayout` reverts with `NotTriggerAuthorised`.
+> 2. `ParametricTrigger.registerTrigger` trusted a caller-supplied `agentId`.
+>    It now requires it to equal the policy's own agent (`AgentMismatch`
+>    otherwise).
+>
+> 96/96 contract tests pass, including both regression tests. The earlier
+> deployment (and its addresses) are superseded; use the table above.
 
 ### What runs today (all verified)
 
@@ -76,7 +76,6 @@ The indexer must be running for `verify` checks 1-2 and the dashboard:
 | Item | Status |
 |---|---|
 | Demo video (2-3 min) | ❌ not recorded (Week 3 gate) — script is ready in `docs/DEMO_SCRIPT.md` |
-| **Live redeploy (security fix)** | ❌ blocked on ~0.58 MON gas; fund the deployer, then re-run the deploy script |
 | Mera real-passkey check | 🟡 needs ~2 min in Chrome (`mera.category.xyz/demo`) |
 | MetaMask plugin end-to-end | 🟡 built + 24 unit tests; `mm` CLI not installed, no live run |
 | Submission form | ❌ not filled in |
