@@ -5,6 +5,8 @@ import {Script, console} from "forge-std/Script.sol";
 import {IncidentRegistry} from "../src/IncidentRegistry.sol";
 import {RiskScore} from "../src/RiskScore.sol";
 import {AgentIdentity} from "../src/AgentIdentity.sol";
+import {CoverPool} from "../src/CoverPool.sol";
+import {ParametricTrigger} from "../src/ParametricTrigger.sol";
 import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
 import {IReputationRegistry} from "../src/interfaces/IReputationRegistry.sol";
 
@@ -28,6 +30,11 @@ contract Deploy is Script {
     // Monad testnet chain id.
     uint256 constant MONAD_TESTNET_CHAIN_ID = 10143;
 
+    /// @dev Chainlink KeystoneForwarder on Monad testnet, from
+    ///      `cre workflow supported-chains`. ParametricTrigger accepts reports
+    ///      only from this address.
+    address constant CRE_FORWARDER = 0xF8344CFd5c43616a4366C34E3EEE75af79a74482;
+
     function run() external {
         require(block.chainid == MONAD_TESTNET_CHAIN_ID, "Deploy: not Monad testnet");
 
@@ -50,14 +57,25 @@ contract Deploy is Script {
             IIdentityRegistry(ERC8004_IDENTITY_TESTNET),
             IReputationRegistry(ERC8004_REPUTATION_TESTNET)
         );
+        // CoverPool needs the registry (to test for a disclosed record) and the
+        // score (to price risk).
+        CoverPool pool = new CoverPool(address(registry), address(risk));
+        // ParametricTrigger needs the pool (to pay out), the score (to evaluate),
+        // the registry (disclosure gate), and the forwarder (report signer).
+        ParametricTrigger trigger =
+            new ParametricTrigger(address(pool), address(risk), address(registry), CRE_FORWARDER);
 
         vm.stopBroadcast();
 
         console.log("IncidentRegistry:", address(registry));
         console.log("RiskScore:", address(risk));
         console.log("AgentIdentity:", address(identity));
+        console.log("CoverPool:", address(pool));
+        console.log("ParametricTrigger:", address(trigger));
 
-        _writeDeployment(address(registry), address(risk), address(identity), deployer);
+        _writeDeployment(
+            address(registry), address(risk), address(identity), address(pool), address(trigger), deployer
+        );
     }
 
     function _requireCode(address target, string memory label) internal view {
@@ -68,6 +86,8 @@ contract Deploy is Script {
         address registry,
         address risk,
         address identity,
+        address pool,
+        address trigger,
         address deployer
     ) internal {
         string memory json = string.concat(
@@ -79,10 +99,16 @@ contract Deploy is Script {
             '    "identityRegistry": "', vm.toString(ERC8004_IDENTITY_TESTNET), '",\n',
             '    "reputationRegistry": "', vm.toString(ERC8004_REPUTATION_TESTNET), '"\n',
             "  },\n",
+            '  "cre": {\n',
+            '    "forwarder": "', vm.toString(CRE_FORWARDER), '",\n',
+            '    "chainSelector": "2183018362218727504"\n',
+            "  },\n",
             '  "contracts": {\n',
             '    "incidentRegistry": "', vm.toString(registry), '",\n',
             '    "riskScore": "', vm.toString(risk), '",\n',
-            '    "agentIdentity": "', vm.toString(identity), '"\n',
+            '    "agentIdentity": "', vm.toString(identity), '",\n',
+            '    "coverPool": "', vm.toString(pool), '",\n',
+            '    "parametricTrigger": "', vm.toString(trigger), '"\n',
             "  }\n",
             "}\n"
         );

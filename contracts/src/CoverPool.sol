@@ -136,6 +136,7 @@ contract CoverPool {
     error NoBalance();
     error StillLocked();
     error PolicyNotActive();
+    error PolicyNotFound(uint256 policyId);
     error NotTriggerAuthorised();
 
     /// @param registry_ Staked incident registry (determines "has a record").
@@ -306,7 +307,10 @@ contract CoverPool {
     }
 
     /// @notice Read one policy.
+    /// @dev Reverts with a named error rather than an array panic when the id is
+    ///      out of range, so callers (and other contracts) get a clear signal.
     function getPolicy(uint256 policyId) external view returns (Policy memory) {
+        if (policyId >= _policies.length) revert PolicyNotFound(policyId);
         return _policies[policyId];
     }
 
