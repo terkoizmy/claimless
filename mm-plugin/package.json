@@ -1,0 +1,91 @@
+{
+  "name": "claimless-mm-plugin",
+  "version": "0.1.0",
+  "description": "Claimless plugin for MetaMask Agent Wallet: check ERC-8004 agent risk scores and report staked incidents from the mm CLI",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "oclif-plugin",
+    "metamask",
+    "agent-wallet",
+    "claimless",
+    "erc-8004",
+    "monad"
+  ],
+  "files": [
+    "dist",
+    "oclif.manifest.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && oclif manifest",
+    "prepack": "tsc -p tsconfig.json && oclif manifest",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "oclif": {
+    "bin": "mm",
+    "commands": "./dist/commands",
+    "topicSeparator": " ",
+    "topics": {
+      "claimless": {
+        "description": "Claimless agent-risk registry: check an agent's on-chain risk score and ERC-8004 identity, or report a staked incident."
+      }
+    }
+  },
+  "mm": {
+    "schemaVersion": 1,
+    "minCliVersion": "^7.0.0",
+    "capabilities": [],
+    "commands": [
+      {
+        "id": "claimless:ping",
+        "capabilities": [],
+        "dataAccess": []
+      },
+      {
+        "id": "claimless:risk",
+        "capabilities": [
+          "wallet-read"
+        ],
+        "dataAccess": [
+          "network"
+        ]
+      },
+      {
+        "id": "claimless:agent",
+        "capabilities": [
+          "wallet-read"
+        ],
+        "dataAccess": [
+          "network"
+        ]
+      },
+      {
+        "id": "claimless:report",
+        "capabilities": [
+          "wallet-submit"
+        ],
+        "dataAccess": [
+          "network"
+        ]
+      }
+    ]
+  },
+  "peerDependencies": {
+    "@metamask/agent-wallet": "^7.0.0"
+  },
+  "dependencies": {
+    "viem": "^2.37.0"
+  },
+  "devDependencies": {
+    "@metamask/agent-sdk": "^7.0.0",
+    "@metamask/agent-wallet": "^7.0.0",
+    "@types/node": "^22",
+    "oclif": "^4",
+    "typescript": "^5",
+    "vitest": "^2"
+  }
+}
