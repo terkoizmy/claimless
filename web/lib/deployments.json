@@ -1,0 +1,22 @@
+[
+  {
+    "chainId": 10143,
+    "network": "monad-testnet",
+    "deployer": "0xF601a214CF0FFf4741e7DD405FB5A75B46388395",
+    "erc8004": {
+      "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+      "reputationRegistry": "0x8004B663056A597Dffe9eCcC1965A193B7388713"
+    },
+    "cre": {
+      "forwarder": "0xF8344CFd5c43616a4366C34E3EEE75af79a74482",
+      "chainSelector": "2183018362218727504"
+    },
+    "contracts": {
+      "incidentRegistry": "0xfE23A58f08bCd245ee61cb08dE1d27d2c27c5944",
+      "riskScore": "0x5cFA4968a9225fd5bCAbF88B6A35A9748E6215F4",
+      "agentIdentity": "0x6a075C7A2ebcB43F4E08FEd922AaF058437fa4dA",
+      "coverPool": "0x93634116bDDfeE1098491c839DDDfd7BaA8b7f30",
+      "parametricTrigger": "0xC5F875721E60C3198dA99Aaa639914e64fb15D12"
+    }
+  }
+]
