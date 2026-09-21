@@ -45,6 +45,8 @@ SDK, CRE config, indexer env, and web dashboard all mirror it):
 | `cd mcp && npm run smoke` | live stdio session, 4 tools, real reads |
 | `cd mm-plugin && npm test` | 24/24 pass |
 | `cd web && npm run build` | clean; `npm run dev` serves the dashboard |
+| `cd integrations/langchain && npm test` | 17/17 pass (live RPC; LangChain + Vercel wrappers) |
+| `cd cre/claimless-trigger && cre workflow simulate claimless-trigger --target staging-settings --trigger-index 0 --non-interactive` | reads live chain (`agent=10182 score=87 accepted=1`) matching the contract |
 
 ### Demo state (restored by `sdk/scripts/seed-demo.ts`)
 
@@ -60,11 +62,10 @@ The indexer must be running for `verify` checks 1-2 and the dashboard:
 
 | Item | Status |
 |---|---|
-| Demo video (2-3 min) | ❌ not recorded (Week 3 gate) |
+| Demo video (2-3 min) | ❌ not recorded (Week 3 gate) — script is ready in `docs/DEMO_SCRIPT.md` |
 | Mera real-passkey check | 🟡 needs ~2 min in Chrome (`mera.category.xyz/demo`) |
-| MetaMask plugin end-to-end | 🟡 built + unit-tested; `mm` CLI not installed, no live run |
-| LangChain/Vercel adapters | 🟡 in progress (`integrations/langchain/`) |
-| `docs/DEMO_SCRIPT.md`, `docs/SPONSOR_FEEDBACK.md` | 🟡 in progress |
+| MetaMask plugin end-to-end | 🟡 built + 24 unit tests; `mm` CLI not installed, no live run |
+| Submission form | ❌ not filled in |
 
 ## 3. Environment status (verified 2026-09-15)
 
