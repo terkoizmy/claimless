@@ -35,6 +35,19 @@ SDK, CRE config, indexer env, and web dashboard all mirror it):
 > **Important:** the Sep 21 redeploy created this set; the pre-redeploy addresses
 > (`0xF856...`, `0xF61B...`, `0x7eFC...`) are stale. Do not reintroduce them.
 
+> **⚠️ Pending live redeploy (security fix, 2026-09-21).** `CoverPool.executePayout`
+> was permissionless in the deployed contract set: anyone could drain an active
+> policy, bypassing the parametric condition. The source is now fixed (payout is
+> gated to the authorised `ParametricTrigger`; `setTrigger` is owner-only and
+> one-shot) and 95/95 tests pass, including the regression test. The **live**
+> contracts still carry the old behaviour because a redeploy needs ~0.58 MON of
+> gas and the deployer has ~0.09 MON. To redeploy: fund
+> `0xF601a214CF0FFf4741e7DD405FB5A75B46388395` from `faucet.monad.xyz` (browser
+> captcha, human step), then run
+> `cd contracts && forge script script/Deploy.s.sol --rpc-url https://testnet-rpc.monad.xyz --broadcast`
+> (the script now wires `pool.setTrigger(trigger)`). Until then, do not deposit
+> further capital into the live pool.
+
 ### What runs today (all verified)
 
 | Command | Result |
@@ -63,6 +76,7 @@ The indexer must be running for `verify` checks 1-2 and the dashboard:
 | Item | Status |
 |---|---|
 | Demo video (2-3 min) | ❌ not recorded (Week 3 gate) — script is ready in `docs/DEMO_SCRIPT.md` |
+| **Live redeploy (security fix)** | ❌ blocked on ~0.58 MON gas; fund the deployer, then re-run the deploy script |
 | Mera real-passkey check | 🟡 needs ~2 min in Chrome (`mera.category.xyz/demo`) |
 | MetaMask plugin end-to-end | 🟡 built + 24 unit tests; `mm` CLI not installed, no live run |
 | Submission form | ❌ not filled in |
