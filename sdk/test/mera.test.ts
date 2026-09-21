@@ -18,10 +18,43 @@ import assert from "node:assert/strict";
 // Import the compiled output: the test runner uses `--experimental-strip-types`,
 // which strips types but does not rewrite `./x.js` specifiers to `./x.ts`, so a
 // src/ import cannot resolve. `npm run build` must run before `npm test`.
-import { deriveManyKeys } from "../dist/mera.js";
+import { deriveManyKeys, ENGLISH_WORDLIST } from "../dist/mera.js";
+// The authoritative reference implementation, used as a known-answer oracle.
+import { entropyToMnemonic as scureEntropyToMnemonic } from "@scure/bip39";
+import { wordlist as scureEnglish } from "@scure/bip39/wordlists/english";
+import { mnemonicToAccount } from "viem/accounts";
 
 /** A fixed 32-byte PRF output, standing in for a browser ceremony result. */
 const PRF = new Uint8Array(32).fill(0x1f);
+
+/*
+ * REGRESSION (found 2026-09-21): the inlined BIP-39 wordlist was CORRUPT — 2035
+ * words instead of 2048, silently missing 13 entries from index 16 ("acoustic")
+ * onward. Every derivation still looked self-consistent (same input -> same
+ * output), so the determinism tests above passed while the ADDRESSES WERE WRONG
+ * and did not match Mera's reference implementation. These tests pin the
+ * derivation to the authoritative @scure/bip39 as a known-answer oracle.
+ */
+test("wordlist: exactly 2048 words, byte-identical to @scure/bip39", () => {
+  assert.equal(ENGLISH_WORDLIST.length, 2048, "BIP-39 English list must be 2048 words");
+  assert.deepEqual([...ENGLISH_WORDLIST], [...scureEnglish], "wordlist must match @scure/bip39 exactly");
+});
+
+test("derivation: matches the authoritative @scure/bip39 known-answer vector", () => {
+  const expectedMnemonic = scureEntropyToMnemonic(PRF, scureEnglish);
+  const expected0 = mnemonicToAccount(expectedMnemonic, {
+    accountIndex: 0,
+    changeIndex: 0,
+    addressIndex: 0,
+  }).address;
+
+  const keys = deriveManyKeys({ prfOutput: PRF } as never, 1, "claimless");
+  assert.equal(
+    keys[0].address,
+    expected0,
+    "index 0 must equal the address derived by the reference BIP-39/BIP-44 implementation",
+  );
+});
 
 test("deriveManyKeys: same PRF output yields the same addresses", () => {
   const a = deriveManyKeys({ prfOutput: PRF } as never, 5, "claimless");

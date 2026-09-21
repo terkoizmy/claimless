@@ -58,7 +58,8 @@ SDK, CRE config, indexer env, and web dashboard all mirror it):
 | `cd sdk && npm run seed:demo` | idempotent demo-state seed (see below) |
 | `cd mcp && npm run smoke` | live stdio session, 4 tools, real reads |
 | `cd mm-plugin && npm test` | 24/24 pass |
-| `cd web && npm run build` | clean; `npm run dev` serves the dashboard |
+| `cd web && npm run build` | clean; `npm run dev` serves the dashboard and `/passkey/` |
+| `cd sdk && npm test` | 10/10 pass (Mera derivation pinned to the reference BIP-39) |
 | `cd integrations/langchain && npm test` | 17/17 pass (live RPC; LangChain + Vercel wrappers) |
 | `cd cre/claimless-trigger && cre workflow simulate claimless-trigger --target staging-settings --trigger-index 0 --non-interactive` | reads live chain (`agent=10182 score=87 accepted=1`) matching the contract |
 
@@ -77,7 +78,7 @@ The indexer must be running for `verify` checks 1-2 and the dashboard:
 | Item | Status |
 |---|---|
 | Demo video (2-3 min) | ❌ not recorded (Week 3 gate) — script is ready in `docs/DEMO_SCRIPT.md` |
-| Mera real-passkey check | 🟡 needs ~2 min in Chrome (`mera.category.xyz/demo`) |
+| Mera real-passkey check | 🟡 needs ~2 min in Chrome at `http://localhost:3000/passkey/` (page built; module corrected + 10 tests) |
 | MetaMask plugin end-to-end | 🟡 built + 24 unit tests; `mm` CLI not installed, no live run |
 | Submission form | ❌ not filled in |
 

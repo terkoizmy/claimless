@@ -293,21 +293,25 @@ throws `PRF_UNAVAILABLE`. The fix:
 3. Let Chrome save the passkey into **Google Password Manager**, not "this device only".
 4. Retry the ceremony.
 
-### 6c. The 2-minute test (recommended before relying on it)
+### 6c. The 2-minute test (do this in the dashboard, no other site needed)
 
-There is a zero-cost, no-code cross-check:
+The dashboard ships a passkey page, so you can run the whole ceremony in one place:
 
-1. Open **https://mera.category.xyz/demo** in **desktop Chrome**, signed into
-   Google, sync ON.
-2. Run their passkey ceremony.
-3. Confirm a PRF output comes back (i.e. an account address is derived).
-4. Optionally repeat on a second synced device and confirm the **same address**.
+1. `cd web && npm run dev`
+2. Open **http://localhost:3000/passkey/** in **desktop Chrome**, signed into Google, sync ON.
+3. Click **Create passkey + derive account**.
+4. You should see the credential id, the **PRF output**, and a table of five derived addresses.
 
-That is the exact step Claimless's own Mera integration is waiting on — it is
-marked "code complete, live browser PRF test pending a human"
-(`docs/sponsor-notes.md`). Everything around the ceremony is already tested:
-8 determinism tests plus the full derivation/signing path in Node
-(`cd sdk && npm run mera:demo`).
+If it fails with `PRF_UNAVAILABLE`, the page prints the exact fix (the passkey was saved to
+the local Chrome profile instead of Google Password Manager). Re-running with
+**Sign in with an existing passkey** on any synced device must yield the **same address**.
+
+There is also a zero-cost, no-code cross-check at **https://mera.category.xyz/demo**.
+
+That browser ceremony is the exact step Claimless's own Mera integration was waiting on.
+Everything around it is already tested: the derivation is pinned to the reference
+`@scure/bip39` implementation by a known-answer test, and the full derivation/signing
+path runs in Node (`cd sdk && npm test` → 10 passing, `npm run mera:demo`).
 
 ### 6d. Why a passkey and not just a wallet?
 

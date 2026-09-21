@@ -89,11 +89,11 @@ the two cap numbers scale with it. Read aloud whatever the screen shows; the
 
 ### Shot 2 — The underwriter's key is a passkey (0:32-0:52) · OFF-CHAIN
 
-**Action:** in a terminal, `cd sdk && npm run mera:demo`, then `npm test` (expect `8 passed, 0 failed`).
+**Action:** in a terminal, `cd sdk && npm run mera:demo`, then `npm test` (expect `10 passed, 0 failed`). Optionally, over HTTPS or `http://localhost`, open the dashboard's `/passkey/` page and run the real browser ceremony (the 2-minute human step; see `docs/USER_GUIDE.md` §6).
 
-**On screen:** the demo derives **five distinct EOAs from one 32-byte PRF input**, reproducibly (labelled STUB PRF; `isMeraAvailable()` is `false` under Node by design, because PRF is computed inside the authenticator and cannot be polyfilled). The test run prints the eight `deriveManyKeys` checks: same PRF → same addresses, N indexes → N distinct addresses, wrong-length PRF rejected, EVM-format checks, purpose-label convention, bounds enforced.
+**On screen:** the demo derives **five distinct EOAs from one 32-byte PRF input**, reproducibly (labelled STUB PRF; `isMeraAvailable()` is `false` under Node by design, because PRF is computed inside the authenticator and cannot be polyfilled). The test run prints the derivation checks (including wordlist/known-answer tests pinning the derivation to `@scure/bip39`): same PRF → same addresses, N indexes → N distinct addresses, wrong-length PRF rejected, EVM-format checks, purpose-label convention, bounds enforced.
 
-**Narration:** "The underwriter is a human, so the human account layer is Mera: no seed phrase, no browser extension, no API key, no server, no custody. One passkey, and the PRF output that only a real authenticator can produce derives many independent keys from it. Eight determinism tests pin the derivation; the same PRF always yields the same addresses. *(If the live browser ceremony has been completed by record day, swap this shot for the real Chrome passkey sign-in and say so. It is currently UNVERIFIED — do not fake it.)*"
+**Narration:** "The underwriter is a human, so the human account layer is Mera: no seed phrase, no browser extension, no API key, no server, no custody. One passkey, and the PRF output that only a real authenticator can produce derives many independent keys from it. Ten tests pin the derivation, including one against the reference BIP-39 implementation after we found and fixed a corrupted wordlist that was silently producing wrong addresses; the same PRF always yields the same addresses. *(If the live browser ceremony has been completed by record day, run `/passkey/` on camera instead and say so. It is currently UNVERIFIED — do not fake it.)*"
 
 ### Shot 3 — An agent reports, no human (0:52-1:15) · **LIVE WRITE**
 
