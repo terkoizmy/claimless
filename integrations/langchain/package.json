@@ -1,0 +1,63 @@
+{
+  "name": "@claimless/langchain-tools",
+  "version": "0.1.0",
+  "description": "Claimless agent tools for LangChain and the Vercel AI SDK: ERC-8004 identity, on-chain risk score, incident history, and the staked incident report (write, spends MON).",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./langchain": {
+      "types": "./dist/langchain.d.ts",
+      "import": "./dist/langchain.js"
+    },
+    "./vercel": {
+      "types": "./dist/vercel.d.ts",
+      "import": "./dist/vercel.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@claimless/sdk": "file:../../sdk",
+    "viem": "^2.21.0"
+  },
+  "peerDependencies": {
+    "@langchain/core": "^1.0.0",
+    "ai": ">=5.0.0",
+    "zod": "^3.25.76 || ^4.1.8"
+  },
+  "peerDependenciesMeta": {
+    "@langchain/core": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@langchain/core": "^1.2.12",
+    "@types/node": "^22.10.0",
+    "ai": "^7.0.107",
+    "langchain": "^1.5.11",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.3",
+    "vitest": "^5.0.1",
+    "zod": "^3.25.76"
+  }
+}
